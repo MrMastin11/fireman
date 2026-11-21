@@ -212,6 +212,7 @@ public class WaterBlasterShooter : MonoBehaviour
             }
 
             droplet.velocity += Vector3.up * gravity * deltaTime;
+            Vector3 previousPosition = droplet.transform.position;
             Vector3 displacement = droplet.velocity * deltaTime;
             float travelDistance = displacement.magnitude;
 
@@ -232,6 +233,9 @@ public class WaterBlasterShooter : MonoBehaviour
                 droplet.transform.position += displacement;
                 droplet.distanceTravelled += travelDistance;
             }
+
+            FireSpreadSystem.NotifyWaterAt(previousPosition, droplet.radius);
+            FireSpreadSystem.NotifyWaterAt(droplet.transform.position, droplet.radius);
         }
     }
 
