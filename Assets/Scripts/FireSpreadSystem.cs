@@ -6,8 +6,8 @@ public class FireSpreadSystem : MonoBehaviour
     private static readonly List<FireSpreadSystem> instances = new List<FireSpreadSystem>();
 
     [Header("Spawn Area")]
-    [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 1.5f, -4.35f);
-    [SerializeField] private Vector3 spawnAreaSize = new Vector3(6.5f, 3.2f, 2.2f);
+    [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 2f, -4.35f);
+    [SerializeField] private Vector3 spawnAreaSize = new Vector3(8.5f, 4f, 2.2f);
     [SerializeField] private bool firstSpawnImmediately = true;
     [SerializeField] private float spawnInterval = 2f;
 
@@ -17,6 +17,7 @@ public class FireSpreadSystem : MonoBehaviour
     [SerializeField] private float minFireSeparation = 0.65f;
     [SerializeField] private int maxFires = 24;
     [SerializeField] private float extinguishRadius = 0.5f;
+    [SerializeField] private float contactRadius = 0.45f;
 
     [Header("Fire Particles")]
     [SerializeField] private int particlesPerFire = 36;
@@ -85,6 +86,17 @@ public class FireSpreadSystem : MonoBehaviour
             if (instances[i] != null)
                 instances[i].ExtinguishAt(position, waterRadius);
         }
+    }
+
+    public static bool IsCapsuleInFire(Vector3 capsuleBottom, Vector3 capsuleTop, float capsuleRadius)
+    {
+        for (int i = instances.Count - 1; i >= 0; i--)
+        {
+            if (instances[i] != null && instances[i].CapsuleTouchesFire(capsuleBottom, capsuleTop, capsuleRadius))
+                return true;
+        }
+
+        return false;
     }
 
     private void CreateFirePool()
@@ -225,6 +237,30 @@ public class FireSpreadSystem : MonoBehaviour
             if (fire.active && (fire.transform.position - position).sqrMagnitude <= radiusSqr)
                 ReleaseFire(fire);
         }
+    }
+
+    private bool CapsuleTouchesFire(Vector3 capsuleBottom, Vector3 capsuleTop, float capsuleRadius)
+    {
+        Vector3 segment = capsuleTop - capsuleBottom;
+        float segmentLengthSqr = segment.sqrMagnitude;
+        float contactDistance = capsuleRadius + contactRadius;
+        float contactDistanceSqr = contactDistance * contactDistance;
+
+        for (int i = 0; i < firePool.Length; i++)
+        {
+            FireNode fire = firePool[i];
+            if (!fire.active)
+                continue;
+
+            float t = segmentLengthSqr > 0.0001f
+                ? Mathf.Clamp01(Vector3.Dot(fire.transform.position - capsuleBottom, segment) / segmentLengthSqr)
+                : 0f;
+            Vector3 closestPoint = capsuleBottom + segment * t;
+            if ((fire.transform.position - closestPoint).sqrMagnitude <= contactDistanceSqr)
+                return true;
+        }
+
+        return false;
     }
 
     private void ReleaseFire(FireNode fire)

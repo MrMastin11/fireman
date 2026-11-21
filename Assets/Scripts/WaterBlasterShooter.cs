@@ -6,9 +6,11 @@ public class WaterBlasterShooter : MonoBehaviour
     [Header("References")]
     [SerializeField] private Camera playerCamera;
     [SerializeField] private FirstPersonController playerController;
+    [SerializeField] private FirefighterVitals playerVitals;
 
     [Header("Shooting")]
     [SerializeField] private float shotsPerSecond = 8f;
+    [SerializeField] private float waterPerShot = 1f;
     [SerializeField] private float particleSpeed = 34f;
     [SerializeField] private float maxDistance = 80f;
     [SerializeField] private int dropletsPerShot = 24;
@@ -62,6 +64,9 @@ public class WaterBlasterShooter : MonoBehaviour
         if (playerController == null)
             playerController = GetComponent<FirstPersonController>();
 
+        if (playerVitals == null)
+            playerVitals = GetComponent<FirefighterVitals>();
+
         waterMaterial = CreateWaterMaterial();
         trailMaterial = CreateTrailMaterial();
         CreateWaterColorPalette();
@@ -73,9 +78,18 @@ public class WaterBlasterShooter : MonoBehaviour
         SimulateDroplets(Time.deltaTime);
 
         if (Mouse.current == null)
+        {
+            if (playerVitals != null)
+                playerVitals.SetWeaponTriggerHeld(false);
             return;
+        }
 
-        if (Mouse.current.leftButton.isPressed && Time.time >= nextShotTime)
+        bool triggerHeld = Mouse.current.leftButton.isPressed;
+        if (playerVitals != null)
+            playerVitals.SetWeaponTriggerHeld(triggerHeld);
+
+        if (triggerHeld && Time.time >= nextShotTime
+            && (playerVitals == null || playerVitals.TryConsumeWater(waterPerShot)))
         {
             ShootOnce();
             nextShotTime = Time.time + 1f / Mathf.Max(1f, shotsPerSecond);
