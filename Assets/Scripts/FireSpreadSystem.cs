@@ -6,10 +6,12 @@ public class FireSpreadSystem : MonoBehaviour
     private static readonly List<FireSpreadSystem> instances = new List<FireSpreadSystem>();
 
     [Header("Spawn Area")]
-    [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 2f, -4.35f);
-    [SerializeField] private Vector3 spawnAreaSize = new Vector3(8.5f, 4f, 2.2f);
+    [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 2.7f, -0.9f);
+    [SerializeField] private Vector3 spawnAreaSize = new Vector3(11f, 5f, 9f);
     [SerializeField] private bool firstSpawnImmediately = true;
     [SerializeField] private float spawnInterval = 2f;
+    [SerializeField] private LayerMask spawnObstacleMask = ~0;
+    [SerializeField] private float spawnClearanceRadius = 0.35f;
 
     [Header("Fire Spread")]
     [SerializeField] private float spreadInterval = 1f;
@@ -175,7 +177,9 @@ public class FireSpreadSystem : MonoBehaviour
         for (int attempt = 0; attempt < 12; attempt++)
         {
             Vector3 point = GetRandomPointInSpawnArea();
-            if (!IsFireNear(point, minFireSeparation) && SpawnFire(point))
+            if (IsSpawnPointClear(point)
+                && !IsFireNear(point, minFireSeparation)
+                && SpawnFire(point))
                 return;
         }
     }
@@ -190,7 +194,9 @@ public class FireSpreadSystem : MonoBehaviour
             Vector3 point = source.transform.position + Random.insideUnitSphere * spreadRadius;
             point = ClampToSpawnArea(point);
 
-            if (!IsFireNear(point, minFireSeparation) && SpawnFire(point))
+            if (IsSpawnPointClear(point)
+                && !IsFireNear(point, minFireSeparation)
+                && SpawnFire(point))
                 return;
         }
     }
@@ -282,6 +288,15 @@ public class FireSpreadSystem : MonoBehaviour
         }
 
         return false;
+    }
+
+    private bool IsSpawnPointClear(Vector3 point)
+    {
+        return !Physics.CheckSphere(
+            point,
+            spawnClearanceRadius,
+            spawnObstacleMask,
+            QueryTriggerInteraction.Ignore);
     }
 
     private Vector3 GetRandomPointInSpawnArea()
