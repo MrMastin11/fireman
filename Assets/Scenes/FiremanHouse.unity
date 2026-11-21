@@ -442,7 +442,7 @@ MonoBehaviour:
   spawnAreaCenter: {x: 0, y: 1.5, z: -4.35}
   spawnAreaSize: {x: 6.5, y: 3.2, z: 2.2}
   firstSpawnImmediately: 1
-  spawnInterval: 5
+  spawnInterval: 2
   spreadInterval: 1
   spreadRadius: 2
   minFireSeparation: 0.65

@@ -9,7 +9,7 @@ public class FireSpreadSystem : MonoBehaviour
     [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 1.5f, -4.35f);
     [SerializeField] private Vector3 spawnAreaSize = new Vector3(6.5f, 3.2f, 2.2f);
     [SerializeField] private bool firstSpawnImmediately = true;
-    [SerializeField] private float spawnInterval = 5f;
+    [SerializeField] private float spawnInterval = 2f;
 
     [Header("Fire Spread")]
     [SerializeField] private float spreadInterval = 1f;
