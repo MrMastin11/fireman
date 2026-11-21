@@ -52,6 +52,9 @@ public class FirstPersonController : MonoBehaviour
 
         if (handsOverlay != null)
         {
+            GameObject overlayRoot = handsOverlay.transform.root.gameObject;
+            overlayRoot.SetActive(true);
+            handsOverlay.gameObject.SetActive(true);
             handsBasePosition = handsOverlay.anchoredPosition;
             handsBaseRotation = handsOverlay.localRotation;
         }
