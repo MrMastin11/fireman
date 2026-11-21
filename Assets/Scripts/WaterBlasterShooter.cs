@@ -41,6 +41,7 @@ public class WaterBlasterShooter : MonoBehaviour
         public GameObject gameObject;
         public Transform transform;
         public Renderer renderer;
+        public TrailRenderer trail;
         public Vector3 velocity;
         public float distanceTravelled;
         public float remainingLifetime;
@@ -123,11 +124,26 @@ public class WaterBlasterShooter : MonoBehaviour
             var renderer = dropletObject.GetComponent<Renderer>();
             renderer.sharedMaterial = waterMaterial;
 
+            var trail = dropletObject.AddComponent<TrailRenderer>();
+            trail.time = 0.18f;
+            trail.minVertexDistance = 0.025f;
+            trail.numCapVertices = 4;
+            trail.numCornerVertices = 4;
+            trail.alignment = LineAlignment.View;
+            trail.widthMultiplier = 0.14f;
+            trail.widthCurve = new AnimationCurve(
+                new Keyframe(0f, 1f),
+                new Keyframe(0.72f, 0.65f),
+                new Keyframe(1f, 0f));
+            trail.material = waterMaterial;
+            trail.emitting = false;
+
             dropletPool[i] = new WaterDroplet
             {
                 gameObject = dropletObject,
                 transform = dropletObject.transform,
-                renderer = renderer
+                renderer = renderer,
+                trail = trail
             };
         }
     }
@@ -143,8 +159,10 @@ public class WaterBlasterShooter : MonoBehaviour
         droplet.radius = Mathf.Max(collisionRadius, diameter * 0.5f);
         droplet.bounces = 0;
         droplet.active = true;
-        droplet.renderer.enabled = true;
         droplet.gameObject.SetActive(true);
+        droplet.renderer.enabled = true;
+        droplet.trail.Clear();
+        droplet.trail.emitting = true;
     }
 
     private WaterDroplet GetNextDroplet()
@@ -247,6 +265,8 @@ public class WaterBlasterShooter : MonoBehaviour
     {
         droplet.active = false;
         droplet.velocity = Vector3.zero;
+        droplet.trail.emitting = false;
+        droplet.trail.Clear();
         droplet.renderer.enabled = false;
         droplet.gameObject.SetActive(false);
     }
