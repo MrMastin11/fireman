@@ -3057,7 +3057,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   poolSize: 256
   projectileMaxDistance: 35
-  maxDropletLifetime: 1.5
+  maxDropletLifetime: 0.9
   gravity: -18
   bounceDamping: 0.55
   maxBounces: 2

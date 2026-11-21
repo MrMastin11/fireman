@@ -19,7 +19,7 @@ public class WaterBlasterShooter : MonoBehaviour
     [Header("Droplet Physics")]
     [SerializeField] private int poolSize = 256;
     [SerializeField] private float projectileMaxDistance = 35f;
-    [SerializeField] private float maxDropletLifetime = 1.5f;
+    [SerializeField] private float maxDropletLifetime = 0.9f;
     [SerializeField] private float gravity = -18f;
     [SerializeField] private float bounceDamping = 0.55f;
     [SerializeField] private int maxBounces = 2;
@@ -32,6 +32,8 @@ public class WaterBlasterShooter : MonoBehaviour
 
     private float nextShotTime;
     private Material waterMaterial;
+    private Material trailMaterial;
+    private Gradient waterGradient;
     private WaterDroplet[] dropletPool;
     private int poolCursor;
     private readonly RaycastHit[] hitBuffer = new RaycastHit[8];
@@ -59,6 +61,8 @@ public class WaterBlasterShooter : MonoBehaviour
             playerController = GetComponent<FirstPersonController>();
 
         waterMaterial = CreateWaterMaterial();
+        trailMaterial = CreateTrailMaterial();
+        waterGradient = CreateWaterGradient();
         CreateDropletPool();
     }
 
@@ -135,7 +139,8 @@ public class WaterBlasterShooter : MonoBehaviour
                 new Keyframe(0f, 1f),
                 new Keyframe(0.72f, 0.65f),
                 new Keyframe(1f, 0f));
-            trail.material = waterMaterial;
+            trail.material = trailMaterial;
+            trail.colorGradient = waterGradient;
             trail.emitting = false;
 
             dropletPool[i] = new WaterDroplet
@@ -297,6 +302,44 @@ public class WaterBlasterShooter : MonoBehaviour
         return material;
     }
 
+    private Material CreateTrailMaterial()
+    {
+        if (waterMaterial == null)
+            return null;
+
+        var material = new Material(waterMaterial)
+        {
+            name = "World Water Trail Material",
+            color = Color.white
+        };
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", Color.white);
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", Color.white);
+
+        return material;
+    }
+
+    private Gradient CreateWaterGradient()
+    {
+        var gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(Color.white, 0f),
+                new GradientColorKey(new Color(0.55f, 0.9f, 1f), 0.45f),
+                new GradientColorKey(new Color(0.05f, 0.55f, 1f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(1f, 0f),
+                new GradientAlphaKey(0.95f, 0.8f),
+                new GradientAlphaKey(0.7f, 1f)
+            });
+        return gradient;
+    }
+
     private void OnDestroy()
     {
         if (dropletPool != null)
@@ -310,5 +353,8 @@ public class WaterBlasterShooter : MonoBehaviour
 
         if (waterMaterial != null)
             Destroy(waterMaterial);
+
+        if (trailMaterial != null)
+            Destroy(trailMaterial);
     }
 }
