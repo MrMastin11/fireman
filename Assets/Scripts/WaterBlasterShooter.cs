@@ -26,8 +26,9 @@ public class WaterBlasterShooter : MonoBehaviour
     [SerializeField] private float collisionRadius = 0.08f;
 
     [Header("World Muzzle")]
-    [SerializeField] private Vector2 muzzleViewportPosition = new Vector2(0.78f, 0.19f);
+    [SerializeField] private Vector2 muzzleViewportPosition = new Vector2(0.62f, 0.34f);
     [SerializeField] private float muzzleDepth = 0.45f;
+    [SerializeField] private float muzzleForwardOffset = 0.55f;
 
     private float nextShotTime;
     private Material waterMaterial;
@@ -95,7 +96,7 @@ public class WaterBlasterShooter : MonoBehaviour
         for (int i = 0; i < dropletsPerShot; i++)
         {
             Vector3 particleDirection = (direction + Random.insideUnitSphere * spread).normalized;
-            Vector3 start = muzzle + Random.insideUnitSphere * 0.035f;
+            Vector3 start = muzzle + direction * muzzleForwardOffset + Random.insideUnitSphere * 0.035f;
             float size = dropletSize * Random.Range(0.75f, 1.25f);
             SpawnDroplet(start, particleDirection * particleSpeed, size);
         }

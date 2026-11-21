@@ -3055,8 +3055,16 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  muzzleViewportPosition: {x: 0.78, y: 0.19}
+  poolSize: 256
+  projectileMaxDistance: 35
+  maxDropletLifetime: 1.5
+  gravity: -18
+  bounceDamping: 0.55
+  maxBounces: 2
+  collisionRadius: 0.08
+  muzzleViewportPosition: {x: 0.62, y: 0.34}
   muzzleDepth: 0.45
+  muzzleForwardOffset: 0.55
 --- !u!1 &1037991927
 GameObject:
   m_ObjectHideFlags: 0
