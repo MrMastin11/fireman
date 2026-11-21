@@ -28,7 +28,7 @@ public class WaterBlasterShooter : MonoBehaviour
     [Header("World Muzzle")]
     [SerializeField] private Vector2 muzzleViewportPosition = new Vector2(0.62f, 0.34f);
     [SerializeField] private float muzzleDepth = 0.45f;
-    [SerializeField] private float muzzleForwardOffset = 0.55f;
+    [SerializeField] private float muzzleForwardOffset = 0.3f;
 
     private float nextShotTime;
     private Material waterMaterial;

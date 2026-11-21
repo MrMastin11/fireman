@@ -3064,7 +3064,7 @@ MonoBehaviour:
   collisionRadius: 0.08
   muzzleViewportPosition: {x: 0.62, y: 0.34}
   muzzleDepth: 0.45
-  muzzleForwardOffset: 0.55
+  muzzleForwardOffset: 0.3
 --- !u!1 &1037991927
 GameObject:
   m_ObjectHideFlags: 0
