@@ -3045,14 +3045,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaterBlasterShooter
   playerCamera: {fileID: 97878276}
-  weaponOverlay: {fileID: 66382514}
   playerController: {fileID: 1037116478}
-  waterParticles: {fileID: 0}
   shotsPerSecond: 8
-  particleSpeed: 22
+  particleSpeed: 34
   maxDistance: 80
-  dropletsPerShot: 8
-  spread: 0.025
+  dropletsPerShot: 24
+  spread: 0.018
+  dropletSize: 0.2
   hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
