@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -12,12 +11,19 @@ public class WaterBlasterShooter : MonoBehaviour
     [SerializeField] private float shotsPerSecond = 8f;
     [SerializeField] private float particleSpeed = 34f;
     [SerializeField] private float maxDistance = 80f;
-    [SerializeField] private int dropletsPerShot = 18;
+    [SerializeField] private int dropletsPerShot = 24;
     [SerializeField] private float spread = 0.018f;
     [SerializeField] private float dropletSize = 0.2f;
-    [SerializeField] private float streamWidth = 0.24f;
-    [SerializeField] private float streamLifetime = 1.2f;
     [SerializeField] private LayerMask hitMask = ~0;
+
+    [Header("Droplet Physics")]
+    [SerializeField] private int poolSize = 256;
+    [SerializeField] private float projectileMaxDistance = 35f;
+    [SerializeField] private float maxDropletLifetime = 1.5f;
+    [SerializeField] private float gravity = -18f;
+    [SerializeField] private float bounceDamping = 0.55f;
+    [SerializeField] private int maxBounces = 2;
+    [SerializeField] private float collisionRadius = 0.08f;
 
     [Header("World Muzzle")]
     [SerializeField] private Vector2 muzzleViewportPosition = new Vector2(0.78f, 0.19f);
@@ -25,6 +31,22 @@ public class WaterBlasterShooter : MonoBehaviour
 
     private float nextShotTime;
     private Material waterMaterial;
+    private WaterDroplet[] dropletPool;
+    private int poolCursor;
+    private readonly RaycastHit[] hitBuffer = new RaycastHit[8];
+
+    private sealed class WaterDroplet
+    {
+        public GameObject gameObject;
+        public Transform transform;
+        public Renderer renderer;
+        public Vector3 velocity;
+        public float distanceTravelled;
+        public float remainingLifetime;
+        public float radius;
+        public int bounces;
+        public bool active;
+    }
 
     private void Awake()
     {
@@ -35,10 +57,13 @@ public class WaterBlasterShooter : MonoBehaviour
             playerController = GetComponent<FirstPersonController>();
 
         waterMaterial = CreateWaterMaterial();
+        CreateDropletPool();
     }
 
     private void Update()
     {
+        SimulateDroplets(Time.deltaTime);
+
         if (Mouse.current == null)
             return;
 
@@ -51,14 +76,14 @@ public class WaterBlasterShooter : MonoBehaviour
 
     public void ShootOnce()
     {
-        if (playerCamera == null || waterMaterial == null)
+        if (playerCamera == null || waterMaterial == null || dropletPool == null)
             return;
 
         Ray aimRay = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
         Vector3 target = aimRay.origin + aimRay.direction * maxDistance;
 
         if (Physics.Raycast(aimRay, out RaycastHit hit, maxDistance, hitMask, QueryTriggerInteraction.Ignore)
-            && !hit.collider.transform.IsChildOf(transform))
+            && !IsOwnedCollider(hit.collider))
         {
             target = hit.point;
         }
@@ -66,79 +91,163 @@ public class WaterBlasterShooter : MonoBehaviour
         Vector3 muzzle = playerCamera.ViewportToWorldPoint(
             new Vector3(muzzleViewportPosition.x, muzzleViewportPosition.y, muzzleDepth));
         Vector3 direction = (target - muzzle).normalized;
-        float distance = Vector3.Distance(muzzle, target);
-        float lifetime = Mathf.Clamp(distance / particleSpeed, 2.5f, 5f);
-
-        CreateWorldWaterStream(muzzle, target);
 
         for (int i = 0; i < dropletsPerShot; i++)
         {
             Vector3 particleDirection = (direction + Random.insideUnitSphere * spread).normalized;
             Vector3 start = muzzle + Random.insideUnitSphere * 0.035f;
-            float dropletLifetime = lifetime * Random.Range(0.88f, 1.08f);
             float size = dropletSize * Random.Range(0.75f, 1.25f);
-            StartCoroutine(MoveWorldDroplet(start, particleDirection, dropletLifetime, size));
+            SpawnDroplet(start, particleDirection * particleSpeed, size);
         }
 
         if (playerController != null)
             playerController.ApplyShotRecoil();
     }
 
-    private void CreateWorldWaterStream(Vector3 start, Vector3 target)
+    private void CreateDropletPool()
     {
-        var streamObject = new GameObject("WorldWaterStream");
-        Vector3 direction = (target - start).normalized;
-        float distance = Vector3.Distance(start, target);
-        int streamDrops = Mathf.Clamp(Mathf.CeilToInt(distance / 0.55f), 8, 28);
+        int safePoolSize = Mathf.Max(poolSize, dropletsPerShot);
+        dropletPool = new WaterDroplet[safePoolSize];
 
-        for (int i = 0; i < streamDrops; i++)
+        for (int i = 0; i < dropletPool.Length; i++)
         {
-            float t = (i + 1f) / (streamDrops + 1f);
-            Vector3 position = Vector3.Lerp(start, target, t);
-            position += Random.insideUnitSphere * streamWidth * 0.28f;
+            var dropletObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            dropletObject.name = "PooledWaterDroplet";
+            dropletObject.SetActive(false);
 
-            var drop = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            drop.name = "WorldWaterStreamDrop";
-            drop.transform.SetParent(streamObject.transform);
-            drop.transform.position = position;
-            float diameter = streamWidth * Random.Range(0.72f, 1.25f);
-            drop.transform.localScale = Vector3.one * diameter;
-
-            var collider = drop.GetComponent<Collider>();
+            var collider = dropletObject.GetComponent<Collider>();
             if (collider != null)
                 collider.enabled = false;
 
-            var renderer = drop.GetComponent<Renderer>();
+            var renderer = dropletObject.GetComponent<Renderer>();
             renderer.sharedMaterial = waterMaterial;
-        }
 
-        Destroy(streamObject, streamLifetime);
+            dropletPool[i] = new WaterDroplet
+            {
+                gameObject = dropletObject,
+                transform = dropletObject.transform,
+                renderer = renderer
+            };
+        }
     }
 
-    private IEnumerator MoveWorldDroplet(Vector3 start, Vector3 direction, float lifetime, float size)
+    private void SpawnDroplet(Vector3 position, Vector3 velocity, float diameter)
     {
-        var droplet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        droplet.name = "WorldWaterDroplet";
-        droplet.transform.position = start;
-        droplet.transform.localScale = Vector3.one * size;
+        WaterDroplet droplet = GetNextDroplet();
+        droplet.transform.SetPositionAndRotation(position, Random.rotation);
+        droplet.transform.localScale = Vector3.one * diameter;
+        droplet.velocity = velocity;
+        droplet.distanceTravelled = 0f;
+        droplet.remainingLifetime = maxDropletLifetime;
+        droplet.radius = Mathf.Max(collisionRadius, diameter * 0.5f);
+        droplet.bounces = 0;
+        droplet.active = true;
+        droplet.renderer.enabled = true;
+        droplet.gameObject.SetActive(true);
+    }
 
-        var collider = droplet.GetComponent<Collider>();
-        if (collider != null)
-            collider.enabled = false;
-
-        var renderer = droplet.GetComponent<Renderer>();
-        renderer.sharedMaterial = waterMaterial;
-
-        float elapsed = 0f;
-        while (elapsed < lifetime && droplet != null)
+    private WaterDroplet GetNextDroplet()
+    {
+        for (int i = 0; i < dropletPool.Length; i++)
         {
-            elapsed += Time.deltaTime;
-            droplet.transform.position += direction * particleSpeed * Time.deltaTime;
-            yield return null;
+            int index = (poolCursor + i) % dropletPool.Length;
+            if (!dropletPool[index].active)
+            {
+                poolCursor = (index + 1) % dropletPool.Length;
+                return dropletPool[index];
+            }
         }
 
-        if (droplet != null)
-            Destroy(droplet);
+        WaterDroplet recycled = dropletPool[poolCursor];
+        poolCursor = (poolCursor + 1) % dropletPool.Length;
+        ReleaseDroplet(recycled);
+        return recycled;
+    }
+
+    private void SimulateDroplets(float deltaTime)
+    {
+        if (dropletPool == null || deltaTime <= 0f)
+            return;
+
+        for (int i = 0; i < dropletPool.Length; i++)
+        {
+            WaterDroplet droplet = dropletPool[i];
+            if (!droplet.active)
+                continue;
+
+            droplet.remainingLifetime -= deltaTime;
+            if (droplet.remainingLifetime <= 0f || droplet.distanceTravelled >= projectileMaxDistance)
+            {
+                ReleaseDroplet(droplet);
+                continue;
+            }
+
+            droplet.velocity += Vector3.up * gravity * deltaTime;
+            Vector3 displacement = droplet.velocity * deltaTime;
+            float travelDistance = displacement.magnitude;
+
+            if (travelDistance > 0.0001f
+                && TryGetClosestHit(droplet.transform.position, displacement.normalized, travelDistance,
+                    droplet.radius, out RaycastHit hit))
+            {
+                droplet.transform.position = hit.point + hit.normal * (droplet.radius + 0.005f);
+                droplet.distanceTravelled += hit.distance;
+                droplet.velocity = Vector3.Reflect(droplet.velocity, hit.normal) * bounceDamping;
+                droplet.bounces++;
+
+                if (droplet.bounces > maxBounces || droplet.velocity.sqrMagnitude < 4f)
+                    ReleaseDroplet(droplet);
+            }
+            else
+            {
+                droplet.transform.position += displacement;
+                droplet.distanceTravelled += travelDistance;
+            }
+        }
+    }
+
+    private bool TryGetClosestHit(Vector3 origin, Vector3 direction, float distance, float radius,
+        out RaycastHit closestHit)
+    {
+        int hitCount = Physics.SphereCastNonAlloc(
+            origin,
+            radius,
+            direction,
+            hitBuffer,
+            distance,
+            hitMask,
+            QueryTriggerInteraction.Ignore);
+
+        float closestDistance = float.MaxValue;
+        closestHit = default;
+        bool foundHit = false;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit hit = hitBuffer[i];
+            if (hit.collider == null || IsOwnedCollider(hit.collider) || hit.distance >= closestDistance)
+                continue;
+
+            closestDistance = hit.distance;
+            closestHit = hit;
+            foundHit = true;
+        }
+
+        return foundHit;
+    }
+
+    private bool IsOwnedCollider(Collider collider)
+    {
+        return collider != null
+            && (collider.transform == transform || collider.transform.IsChildOf(transform));
+    }
+
+    private void ReleaseDroplet(WaterDroplet droplet)
+    {
+        droplet.active = false;
+        droplet.velocity = Vector3.zero;
+        droplet.renderer.enabled = false;
+        droplet.gameObject.SetActive(false);
     }
 
     private Material CreateWaterMaterial()
@@ -165,5 +274,20 @@ public class WaterBlasterShooter : MonoBehaviour
             material.SetColor("_Color", waterColor);
 
         return material;
+    }
+
+    private void OnDestroy()
+    {
+        if (dropletPool != null)
+        {
+            for (int i = 0; i < dropletPool.Length; i++)
+            {
+                if (dropletPool[i] != null && dropletPool[i].gameObject != null)
+                    Destroy(dropletPool[i].gameObject);
+            }
+        }
+
+        if (waterMaterial != null)
+            Destroy(waterMaterial);
     }
 }
