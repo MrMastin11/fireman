@@ -32,6 +32,8 @@ public class FirstPersonController : MonoBehaviour
     private float walkCycle;
     private Vector2 handsLookOffset;
     private float handsLookRoll;
+    private Vector2 recoilOffset;
+    private float recoilRoll;
     private Vector3 cameraBasePosition;
     private Vector3 cameraBobVelocity;
     private Vector2 handsBasePosition;
@@ -146,6 +148,8 @@ public class FirstPersonController : MonoBehaviour
 
         handsLookOffset = Vector2.Lerp(handsLookOffset, Vector2.zero, smooth);
         handsLookRoll = Mathf.Lerp(handsLookRoll, 0f, smooth);
+        recoilOffset = Vector2.Lerp(recoilOffset, Vector2.zero, 1f - Mathf.Exp(-18f * Time.deltaTime));
+        recoilRoll = Mathf.Lerp(recoilRoll, 0f, 1f - Mathf.Exp(-18f * Time.deltaTime));
 
         if (handsOverlay != null)
         {
@@ -155,18 +159,24 @@ public class FirstPersonController : MonoBehaviour
 
             handsOverlay.anchoredPosition = Vector2.Lerp(
                 handsOverlay.anchoredPosition,
-                handsBasePosition + handsLookOffset + walkBob * movementBlend,
+                handsBasePosition + handsLookOffset + recoilOffset + walkBob * movementBlend,
                 smooth);
 
             Quaternion targetRotation = handsBaseRotation * Quaternion.Euler(
                 0f,
                 0f,
-                handsLookRoll - Mathf.Sin(walkCycle) * handRollAmount * movementBlend);
+                handsLookRoll + recoilRoll - Mathf.Sin(walkCycle) * handRollAmount * movementBlend);
             handsOverlay.localRotation = Quaternion.Slerp(
                 handsOverlay.localRotation,
                 targetRotation,
                 smooth);
         }
+    }
+
+    public void ApplyShotRecoil(float amount = 1f)
+    {
+        recoilOffset += new Vector2(22f, -18f) * amount;
+        recoilRoll -= 2.5f * amount;
     }
 
     private void LockCursor(bool locked)
