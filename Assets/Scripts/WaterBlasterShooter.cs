@@ -33,7 +33,9 @@ public class WaterBlasterShooter : MonoBehaviour
     private float nextShotTime;
     private Material waterMaterial;
     private Material trailMaterial;
-    private Gradient waterGradient;
+    private Material[] waterMaterialPalette;
+    private Material[] trailMaterialPalette;
+    private Gradient trailFadeGradient;
     private WaterDroplet[] dropletPool;
     private int poolCursor;
     private readonly RaycastHit[] hitBuffer = new RaycastHit[8];
@@ -62,7 +64,7 @@ public class WaterBlasterShooter : MonoBehaviour
 
         waterMaterial = CreateWaterMaterial();
         trailMaterial = CreateTrailMaterial();
-        waterGradient = CreateWaterGradient();
+        CreateWaterColorPalette();
         CreateDropletPool();
     }
 
@@ -126,7 +128,7 @@ public class WaterBlasterShooter : MonoBehaviour
                 collider.enabled = false;
 
             var renderer = dropletObject.GetComponent<Renderer>();
-            renderer.sharedMaterial = waterMaterial;
+            renderer.sharedMaterial = waterMaterialPalette[0];
 
             var trail = dropletObject.AddComponent<TrailRenderer>();
             trail.time = 0.18f;
@@ -139,8 +141,8 @@ public class WaterBlasterShooter : MonoBehaviour
                 new Keyframe(0f, 1f),
                 new Keyframe(0.72f, 0.65f),
                 new Keyframe(1f, 0f));
-            trail.material = trailMaterial;
-            trail.colorGradient = waterGradient;
+            trail.material = trailMaterialPalette[0];
+            trail.colorGradient = trailFadeGradient;
             trail.emitting = false;
 
             dropletPool[i] = new WaterDroplet
@@ -158,6 +160,9 @@ public class WaterBlasterShooter : MonoBehaviour
         WaterDroplet droplet = GetNextDroplet();
         droplet.transform.SetPositionAndRotation(position, Random.rotation);
         droplet.transform.localScale = Vector3.one * diameter;
+        int colorIndex = Random.Range(0, waterMaterialPalette.Length);
+        droplet.renderer.sharedMaterial = waterMaterialPalette[colorIndex];
+        droplet.trail.material = trailMaterialPalette[colorIndex];
         droplet.velocity = velocity;
         droplet.distanceTravelled = 0f;
         droplet.remainingLifetime = maxDropletLifetime;
@@ -321,15 +326,55 @@ public class WaterBlasterShooter : MonoBehaviour
         return material;
     }
 
-    private Gradient CreateWaterGradient()
+    private void CreateWaterColorPalette()
+    {
+        const int paletteSize = 12;
+        Color waterBlue = new Color(0.1f, 0.7f, 1f);
+        waterMaterialPalette = new Material[paletteSize];
+        trailMaterialPalette = new Material[paletteSize];
+        trailFadeGradient = CreateTrailFadeGradient();
+
+        for (int i = 0; i < paletteSize; i++)
+        {
+            float blend = i == 0
+                ? 0f
+                : Mathf.Lerp(0.3f, 1f, (i - 1f) / (paletteSize - 2f));
+            Color dropletColor = Color.Lerp(Color.white, waterBlue, blend);
+            waterMaterialPalette[i] = CreateTintedMaterial(
+                waterMaterial,
+                $"World Water Droplet Material {i}",
+                dropletColor);
+            trailMaterialPalette[i] = CreateTintedMaterial(
+                trailMaterial,
+                $"World Water Trail Material {i}",
+                dropletColor);
+        }
+    }
+
+    private Material CreateTintedMaterial(Material source, string materialName, Color color)
+    {
+        var material = new Material(source)
+        {
+            name = materialName,
+            color = color
+        };
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", color);
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", color);
+
+        return material;
+    }
+
+    private Gradient CreateTrailFadeGradient()
     {
         var gradient = new Gradient();
         gradient.SetKeys(
             new[]
             {
                 new GradientColorKey(Color.white, 0f),
-                new GradientColorKey(new Color(0.55f, 0.9f, 1f), 0.45f),
-                new GradientColorKey(new Color(0.05f, 0.55f, 1f), 1f)
+                new GradientColorKey(Color.white, 1f)
             },
             new[]
             {
@@ -356,5 +401,23 @@ public class WaterBlasterShooter : MonoBehaviour
 
         if (trailMaterial != null)
             Destroy(trailMaterial);
+
+        if (waterMaterialPalette != null)
+        {
+            for (int i = 0; i < waterMaterialPalette.Length; i++)
+            {
+                if (waterMaterialPalette[i] != null)
+                    Destroy(waterMaterialPalette[i]);
+            }
+        }
+
+        if (trailMaterialPalette != null)
+        {
+            for (int i = 0; i < trailMaterialPalette.Length; i++)
+            {
+                if (trailMaterialPalette[i] != null)
+                    Destroy(trailMaterialPalette[i]);
+            }
+        }
     }
 }
