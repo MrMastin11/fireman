@@ -11,6 +11,8 @@ public class FirefighterHudUI : MonoBehaviour
     [SerializeField] private RawImage healthFillGraphic;
     [SerializeField] private RawImage waterBackground;
     [SerializeField] private RawImage waterFillGraphic;
+    [SerializeField] private Text healthValueText;
+    [SerializeField] private Text waterValueText;
 
     [Header("Layout")]
     [SerializeField] private float healthBarWidth = 300f;
@@ -25,6 +27,8 @@ public class FirefighterHudUI : MonoBehaviour
         ConfigureGraphic(healthFillGraphic, new Color(0.85f, 0.04f, 0.03f, 1f));
         ConfigureGraphic(waterBackground, new Color(0.02f, 0.06f, 0.12f, 0.78f));
         ConfigureGraphic(waterFillGraphic, new Color(0.04f, 0.45f, 0.95f, 1f));
+        ConfigureValueText(healthValueText);
+        ConfigureValueText(waterValueText);
 
         if (healthFill != null)
             healthBarWidth = healthFill.sizeDelta.x > 0f ? healthFill.sizeDelta.x : healthBarWidth;
@@ -46,6 +50,11 @@ public class FirefighterHudUI : MonoBehaviour
 
         SetHorizontalFill(healthFill, healthBarWidth, vitals.Health01);
         SetVerticalFill(waterFill, waterBarHeight, vitals.Water01);
+
+        if (healthValueText != null)
+            healthValueText.text = $"{Mathf.RoundToInt(vitals.CurrentHealth)}/{Mathf.RoundToInt(vitals.MaxHealth)}";
+        if (waterValueText != null)
+            waterValueText.text = $"{Mathf.RoundToInt(vitals.CurrentWater)}/{Mathf.RoundToInt(vitals.MaxWater)}";
     }
 
     private static void SetHorizontalFill(RectTransform fill, float maxWidth, float ratio)
@@ -76,5 +85,26 @@ public class FirefighterHudUI : MonoBehaviour
         graphic.texture = Texture2D.whiteTexture;
         graphic.color = color;
         graphic.raycastTarget = false;
+    }
+
+    private static void ConfigureValueText(Text valueText)
+    {
+        if (valueText == null)
+            return;
+
+        valueText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        valueText.fontSize = 18;
+        valueText.fontStyle = FontStyle.Bold;
+        valueText.alignment = TextAnchor.MiddleCenter;
+        valueText.color = Color.white;
+        valueText.raycastTarget = false;
+        valueText.supportRichText = false;
+
+        Outline outline = valueText.GetComponent<Outline>();
+        if (outline == null)
+            outline = valueText.gameObject.AddComponent<Outline>();
+        outline.effectColor = new Color(0f, 0f, 0f, 0.9f);
+        outline.effectDistance = new Vector2(1f, -1f);
+        outline.useGraphicAlpha = true;
     }
 }
