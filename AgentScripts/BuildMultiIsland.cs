@@ -34,17 +34,11 @@ public static class BuildMultiIsland
             throw new InvalidOperationException("The existing house scene is missing a required prototype object.");
 
         RemoveTestFireObjects(house);
+        EnsureAmbientAudio(environment);
 
         oldGround.SetActive(false);
         path.transform.position = new Vector3(0f, -0.04f, -7.35f);
         path.transform.localScale = new Vector3(3.4f, 0.12f, 4.2f);
-
-        if (playerStart != null)
-            playerStart.position = new Vector3(0f, 1f, -8.2f);
-        if (entranceTarget != null)
-            entranceTarget.position = new Vector3(0f, 1f, -4.8f);
-
-        MoveExistingTrees(environment.transform);
 
         Material grass = LoadMaterial("Assets/Materials/Grass.mat");
         Material concrete = LoadMaterial("Assets/Materials/Concrete.mat");
@@ -77,7 +71,6 @@ public static class BuildMultiIsland
             new Vector3(-24f, levelRise * 8f, 25f)
         };
         string[] labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
-        float[] houseYaw = { 0f, 8f, -12f, 15f, -7f, 11f, -15f, 6f, -10f };
         float[] houseScale = { 1f, 0.96f, 1.04f, 0.92f, 1.08f, 0.98f, 1.03f, 0.94f, 1.06f };
         Vector3[] treeOffsets =
         {
@@ -91,7 +84,24 @@ public static class BuildMultiIsland
             new Vector3(-4f, 0f, 7.1f),
             new Vector3(4f, 0f, 7.1f)
         };
+        Quaternion[] houseRotations = new Quaternion[centers.Length];
+        for (int i = 0; i < centers.Length; i++)
+        {
+            int targetIndex = i == 0 ? 1 : i - 1;
+            houseRotations[i] = GetDoorFacingRotation(centers[i], centers[targetIndex]);
+        }
+
+        if (playerStart != null)
+            playerStart.position = centers[0] + houseRotations[0] * new Vector3(0f, 1f, -8.2f);
+        if (entranceTarget != null)
+            entranceTarget.position = centers[0] + houseRotations[0] * new Vector3(0f, 1f, -4.8f);
+
+        MoveExistingTrees(environment.transform, centers[0], houseRotations[0], treeOffsets[0], treeOffsets[1]);
+        path.transform.position = centers[0] + houseRotations[0] * new Vector3(0f, -0.04f, -7.35f);
+        path.transform.rotation = houseRotations[0];
+
         var fireSpawnPoints = new List<Transform>(centers.Length);
+        GameObject finalHouseInstance = null;
 
         for (int i = 0; i < centers.Length; i++)
         {
@@ -110,7 +120,7 @@ public static class BuildMultiIsland
             {
                 house.transform.SetParent(island.transform, true);
                 house.transform.position = centers[i];
-                house.transform.rotation = Quaternion.Euler(0f, houseYaw[i], 0f);
+                house.transform.rotation = houseRotations[i];
                 house.transform.localScale = Vector3.one * houseScale[i];
                 houseInstance = house;
             }
@@ -119,15 +129,15 @@ public static class BuildMultiIsland
                 GameObject clone = UnityEngine.Object.Instantiate(house, island.transform);
                 clone.name = $"House_Island_{labels[i]}";
                 clone.transform.position = centers[i];
-                clone.transform.rotation = Quaternion.Euler(0f, houseYaw[i], 0f);
+                clone.transform.rotation = houseRotations[i];
                 clone.transform.localScale = Vector3.one * houseScale[i];
                 RemoveFireSpawnPoints(clone);
                 houseInstance = clone;
 
                 GameObject clonedPath = UnityEngine.Object.Instantiate(path, island.transform);
                 clonedPath.name = $"Front_Path_Island_{labels[i]}";
-                clonedPath.transform.position = centers[i] + new Vector3(0f, -0.04f, -7.35f);
-                clonedPath.transform.rotation = Quaternion.identity;
+                clonedPath.transform.position = centers[i] + houseRotations[i] * new Vector3(0f, -0.04f, -7.35f);
+                clonedPath.transform.rotation = houseRotations[i];
                 clonedPath.transform.localScale = new Vector3(3.4f, 0.12f, 4.2f);
 
                 GameObject clonedHydrant = UnityEngine.Object.Instantiate(hydrant, island.transform);
@@ -138,10 +148,13 @@ public static class BuildMultiIsland
 
                 GameObject clonedTree = UnityEngine.Object.Instantiate(firstTree, island.transform);
                 clonedTree.name = $"Tree_Island_{labels[i]}";
-                clonedTree.transform.position = centers[i] + treeOffsets[i];
+                clonedTree.transform.position = centers[i] + houseRotations[i] * treeOffsets[i];
                 clonedTree.transform.rotation = Quaternion.identity;
                 clonedTree.transform.localScale = Vector3.one * (0.9f + (i % 3) * 0.08f);
             }
+
+            if (i == centers.Length - 1)
+                finalHouseInstance = houseInstance;
 
             int spawnCount = i + 1;
             for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
@@ -165,6 +178,10 @@ public static class BuildMultiIsland
         spawnProperty.arraySize = fireSpawnPoints.Count;
         for (int i = 0; i < fireSpawnPoints.Count; i++)
             spawnProperty.GetArrayElementAtIndex(i).objectReferenceValue = fireSpawnPoints[i];
+
+        SerializedProperty finalHouseProperty = fireSerialized.FindProperty("finalHouse");
+        if (finalHouseProperty != null)
+            finalHouseProperty.objectReferenceValue = finalHouseInstance == null ? null : finalHouseInstance.transform;
 
         fireSerialized.FindProperty("spawnAllHouseFiresAtStart").boolValue = true;
         fireSerialized.FindProperty("houseSpreadBounds").vector3Value = new Vector3(5.1f, 2.6f, 4.1f);
@@ -205,15 +222,52 @@ public static class BuildMultiIsland
             UnityEngine.Object.DestroyImmediate(oldHouse);
     }
 
-    private static void MoveExistingTrees(Transform environment)
+    private static void MoveExistingTrees(Transform environment, Vector3 center, Quaternion houseRotation,
+        Vector3 firstOffset, Vector3 secondOffset)
     {
         var trees = environment.GetComponentsInChildren<Transform>(true)
             .Where(t => t.name == "Tree")
             .ToArray();
         if (trees.Length > 0)
-            trees[0].position = new Vector3(-3.5f, 0f, 7.3f);
+            trees[0].position = center + houseRotation * firstOffset;
         if (trees.Length > 1)
-            trees[1].position = new Vector3(3.5f, 0f, 7.3f);
+            trees[1].position = center + houseRotation * secondOffset;
+    }
+
+    private static Quaternion GetDoorFacingRotation(Vector3 houseCenter, Vector3 ladderTarget)
+    {
+        Vector3 directionToLadder = ladderTarget - houseCenter;
+        directionToLadder.y = 0f;
+        if (directionToLadder.sqrMagnitude < 0.0001f)
+            return Quaternion.identity;
+
+        return Quaternion.LookRotation(-directionToLadder.normalized, Vector3.up);
+    }
+
+    private static void EnsureAmbientAudio(GameObject environment)
+    {
+        const string objectName = "Ambient_Fire_City";
+        const string clipPath = "Assets/techtheist-exdnbd-224289.mp3";
+
+        GameObject audioObject = FindChild(environment.transform, objectName);
+        if (audioObject == null)
+        {
+            audioObject = new GameObject(objectName);
+            audioObject.transform.SetParent(environment.transform, false);
+        }
+
+        AudioSource source = audioObject.GetComponent<AudioSource>();
+        if (source == null)
+            source = audioObject.AddComponent<AudioSource>();
+
+        source.clip = AssetDatabase.LoadAssetAtPath<AudioClip>(clipPath);
+        source.loop = true;
+        source.playOnAwake = true;
+        source.spatialBlend = 0f;
+        source.volume = 0.45f;
+        source.dopplerLevel = 0f;
+        source.enabled = source.clip != null;
+        EditorUtility.SetDirty(audioObject);
     }
 
     private static void RemoveTestFireObjects(GameObject house)

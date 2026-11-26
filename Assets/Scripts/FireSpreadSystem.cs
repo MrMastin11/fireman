@@ -7,6 +7,7 @@ public class FireSpreadSystem : MonoBehaviour
 
     [Header("House Fire Starts")]
     [SerializeField] private Transform[] fireSpawnPoints = new Transform[0];
+    [SerializeField] private Transform finalHouse;
     [SerializeField] private bool spawnAllHouseFiresAtStart = true;
     [SerializeField] private Vector3 houseSpreadBounds = new Vector3(5.1f, 2.6f, 4.1f);
     [SerializeField] private LayerMask spawnObstacleMask = ~0;
@@ -37,11 +38,18 @@ public class FireSpreadSystem : MonoBehaviour
         public ParticleSystem particles;
         public Transform houseAnchor;
         public float nextSpreadTime;
+        public bool countsForFinalObjective;
         public bool active;
     }
 
     public int ActiveFireCount => activeFireCount;
     public int ConfiguredSpawnPointCount => fireSpawnPoints == null ? 0 : fireSpawnPoints.Length;
+    public int ExtinguishedFireCount { get; private set; }
+    public int FinalHouseInitialFireCount => CountInitialFiresForHouse(finalHouse);
+    public int ExtinguishedFinalHouseFireCount { get; private set; }
+    public int ActiveFinalHouseFireCount => CountActiveForHouse(finalHouse);
+    public bool FinalHouseIsClear => initialFiresSpawned && finalHouse != null && ActiveFinalHouseFireCount == 0;
+    public bool AllFiresExtinguished => initialFiresSpawned && activeFireCount == 0;
 
     private void OnEnable()
     {
@@ -62,6 +70,7 @@ public class FireSpreadSystem : MonoBehaviour
 
     private void Start()
     {
+        ResolveFinalHouse();
         if (spawnAllHouseFiresAtStart)
             SpawnInitialHouseFires();
     }
@@ -183,8 +192,40 @@ public class FireSpreadSystem : MonoBehaviour
         {
             Transform spawnPoint = fireSpawnPoints[i];
             if (spawnPoint != null)
-                SpawnFire(spawnPoint.position, spawnPoint);
+            {
+                Transform house = FindHouseRoot(spawnPoint);
+                SpawnFire(spawnPoint.position, house, house == finalHouse);
+            }
         }
+    }
+
+    private void ResolveFinalHouse()
+    {
+        if (finalHouse != null || fireSpawnPoints == null)
+            return;
+
+        for (int i = 0; i < fireSpawnPoints.Length; i++)
+        {
+            Transform house = FindHouseRoot(fireSpawnPoints[i]);
+            if (house != null && house.name == "House_Island_9")
+            {
+                finalHouse = house;
+                return;
+            }
+        }
+    }
+
+    private static Transform FindHouseRoot(Transform point)
+    {
+        Transform current = point;
+        while (current != null)
+        {
+            if (current.name == "House" || current.name.StartsWith("House_Island_", System.StringComparison.Ordinal))
+                return current;
+            current = current.parent;
+        }
+
+        return point;
     }
 
     private void TrySpreadFrom(FireNode source)
@@ -206,12 +247,12 @@ public class FireSpreadSystem : MonoBehaviour
 
             if (IsSpawnPointClear(point)
                 && !IsFireNear(point, minFireSeparation)
-                && SpawnFire(point, source.houseAnchor))
+                && SpawnFire(point, source.houseAnchor, false))
                 return;
         }
     }
 
-    private bool SpawnFire(Vector3 position, Transform houseAnchor)
+    private bool SpawnFire(Vector3 position, Transform houseAnchor, bool countsForFinalObjective)
     {
         FireNode fire = GetAvailableFire();
         if (fire == null)
@@ -220,6 +261,7 @@ public class FireSpreadSystem : MonoBehaviour
         fire.transform.position = position;
         fire.houseAnchor = houseAnchor;
         fire.nextSpreadTime = Time.time + spreadInterval;
+        fire.countsForFinalObjective = countsForFinalObjective;
         fire.active = true;
         fire.gameObject.SetActive(true);
         fire.particles.Clear();
@@ -284,9 +326,44 @@ public class FireSpreadSystem : MonoBehaviour
     {
         fire.active = false;
         fire.houseAnchor = null;
+        if (fire.countsForFinalObjective)
+            ExtinguishedFinalHouseFireCount++;
+        fire.countsForFinalObjective = false;
         fire.particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         fire.gameObject.SetActive(false);
         activeFireCount = Mathf.Max(0, activeFireCount - 1);
+        ExtinguishedFireCount++;
+    }
+
+    private int CountActiveForHouse(Transform house)
+    {
+        if (house == null || firePool == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < firePool.Length; i++)
+        {
+            FireNode fire = firePool[i];
+            if (fire.active && fire.houseAnchor == house)
+                count++;
+        }
+
+        return count;
+    }
+
+    private int CountInitialFiresForHouse(Transform house)
+    {
+        if (house == null || fireSpawnPoints == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < fireSpawnPoints.Length; i++)
+        {
+            if (FindHouseRoot(fireSpawnPoints[i]) == house)
+                count++;
+        }
+
+        return count;
     }
 
     private bool IsFireNear(Vector3 point, float distance)
