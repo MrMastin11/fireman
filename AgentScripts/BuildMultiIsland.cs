@@ -160,7 +160,11 @@ public static class BuildMultiIsland
                 clonedTree.transform.localScale = Vector3.one * (0.9f + (i % 3) * 0.08f);
             }
 
-            ConfigureHouseVariant(houseInstance, i + 1, wall, door, glass, roof, trim, concrete);
+            Vector3 nextHouseCenter = i < centers.Length - 1
+                ? centers[i + 1]
+                : centers[i] + houseRotations[i] * Vector3.forward * 20f;
+            ConfigureHouseVariant(houseInstance, i + 1, nextHouseCenter,
+                wall, door, glass, roof, trim, concrete);
 
             if (i == centers.Length - 1)
                 finalHouseInstance = houseInstance;
@@ -268,7 +272,7 @@ public static class BuildMultiIsland
         return 1;
     }
 
-    private static void ConfigureHouseVariant(GameObject house, int sectionNumber,
+    private static void ConfigureHouseVariant(GameObject house, int sectionNumber, Vector3 nextHouseCenter,
         Material wall, Material door, Material glass, Material roof, Material trim, Material concrete)
     {
         switch (GetHouseVariant(sectionNumber))
@@ -277,7 +281,7 @@ public static class BuildMultiIsland
                 ConfigureElongatedHouse(house, wall, door);
                 break;
             case 3:
-                ConfigureTwoStoryHouse(house, wall, door, glass, roof, trim, concrete);
+                ConfigureTwoStoryHouse(house, nextHouseCenter, wall, door, glass, roof, trim, concrete);
                 break;
         }
     }
@@ -306,6 +310,10 @@ public static class BuildMultiIsland
         if (backWall != null)
             backWall.gameObject.SetActive(false);
 
+        Transform frontDoor = house.transform.Find("Door");
+        if (frontDoor != null)
+            frontDoor.gameObject.SetActive(false);
+
         float wallZ = 4.25f * depthScale;
         CreateHouseCube("Passage_BackWall_Left", house.transform,
             new Vector3(-3.22f, 3.20f, wallZ), Vector3.zero,
@@ -317,11 +325,7 @@ public static class BuildMultiIsland
             new Vector3(0f, 4.90f, wallZ), Vector3.zero,
             new Vector3(2.06f, 1.80f, 0.35f), wall);
 
-        float doorZ = 4.48f * depthScale;
         float frameZ = 4.60f * depthScale;
-        CreateHouseCube("Passage_Back_Door", house.transform,
-            new Vector3(0f, 2.20f, doorZ), Vector3.zero,
-            new Vector3(1.65f, 3.20f, 0.18f), door);
         CreateHouseCube("Passage_Back_Frame_Left", house.transform,
             new Vector3(-0.95f, 2.20f, frameZ), Vector3.zero,
             new Vector3(0.16f, 3.60f, 0.16f), door);
@@ -334,10 +338,14 @@ public static class BuildMultiIsland
         CreateHouseCube("Passage_Back_Threshold", house.transform,
             new Vector3(0f, 0.77f, 4.72f * depthScale), Vector3.zero,
             new Vector3(2.15f, 0.16f, 0.30f), door);
+
+        Transform frontThreshold = house.transform.Find("Door_Threshold");
+        if (frontThreshold != null)
+            frontThreshold.gameObject.SetActive(false);
     }
 
-    private static void ConfigureTwoStoryHouse(GameObject house, Material wall, Material door,
-        Material glass, Material roof, Material trim, Material concrete)
+    private static void ConfigureTwoStoryHouse(GameObject house, Vector3 nextHouseCenter,
+        Material wall, Material door, Material glass, Material roof, Material trim, Material concrete)
     {
         string[] lowerRoofParts =
         {
@@ -360,75 +368,244 @@ public static class BuildMultiIsland
         const float upperFloorBase = 5.82f;
         const float upperFloorHeight = 4.50f;
         float upperFloorCenter = upperFloorBase + upperFloorHeight * 0.5f;
+        Vector3 balconyDirection = GetBalconyDirectionLocal(house.transform, nextHouseCenter);
 
-        CreateHouseCube("Upper_Floor", house.transform,
-            new Vector3(0f, upperFloorBase - 0.12f, 0f), Vector3.zero,
-            new Vector3(10.70f, 0.24f, 8.20f), concrete);
-        CreateHouseCube("Upper_Front_Wall", house.transform,
-            new Vector3(0f, upperFloorCenter, -4.25f), Vector3.zero,
-            new Vector3(10.80f, upperFloorHeight, 0.35f), wall);
-        CreateHouseCube("Upper_Left_Wall", house.transform,
-            new Vector3(-5.25f, upperFloorCenter, 0f), Vector3.zero,
-            new Vector3(0.35f, upperFloorHeight, 8.20f), wall);
-        CreateHouseCube("Upper_Right_Wall", house.transform,
-            new Vector3(5.25f, upperFloorCenter, 0f), Vector3.zero,
-            new Vector3(0.35f, upperFloorHeight, 8.20f), wall);
+        const float floorY = upperFloorBase - 0.12f;
+        CreateHouseCube("Upper_Floor_Left", house.transform,
+            new Vector3(-1.73f, floorY, 0f), Vector3.zero,
+            new Vector3(6.54f, 0.24f, 8.20f), concrete);
+        CreateHouseCube("Upper_Floor_Right", house.transform,
+            new Vector3(4.28f, floorY, 0f), Vector3.zero,
+            new Vector3(1.44f, 0.24f, 8.20f), concrete);
+        CreateHouseCube("Upper_Floor_Front", house.transform,
+            new Vector3(1.55f, floorY, -3.50f), Vector3.zero,
+            new Vector3(3.56f, 0.24f, 1.00f), concrete);
+        CreateHouseCube("Upper_Floor_Back", house.transform,
+            new Vector3(1.55f, floorY, 3.50f), Vector3.zero,
+            new Vector3(3.56f, 0.24f, 1.00f), concrete);
 
-        CreateHouseCube("Upper_BackWall_Left", house.transform,
-            new Vector3(-3.22f, upperFloorCenter, 4.25f), Vector3.zero,
-            new Vector3(4.37f, upperFloorHeight, 0.35f), wall);
-        CreateHouseCube("Upper_BackWall_Right", house.transform,
-            new Vector3(3.22f, upperFloorCenter, 4.25f), Vector3.zero,
-            new Vector3(4.37f, upperFloorHeight, 0.35f), wall);
-        CreateHouseCube("Upper_BackWall_Top", house.transform,
-            new Vector3(0f, 9.64f, 4.25f), Vector3.zero,
-            new Vector3(2.06f, 1.36f, 0.35f), wall);
-        CreateHouseCube("Upper_Back_Door", house.transform,
-            new Vector3(0f, 7.42f, 4.48f), Vector3.zero,
-            new Vector3(1.65f, 3.20f, 0.18f), door);
-        CreateHouseCube("Upper_Back_Frame_Left", house.transform,
-            new Vector3(-0.95f, 7.42f, 4.60f), Vector3.zero,
-            new Vector3(0.16f, 3.60f, 0.16f), door);
-        CreateHouseCube("Upper_Back_Frame_Right", house.transform,
-            new Vector3(0.95f, 7.42f, 4.60f), Vector3.zero,
-            new Vector3(0.16f, 3.60f, 0.16f), door);
-        CreateHouseCube("Upper_Back_Frame_Top", house.transform,
-            new Vector3(0f, 9.14f, 4.60f), Vector3.zero,
-            new Vector3(2.05f, 0.16f, 0.16f), door);
-
-        CreateHouseCube("Upper_Window_Left", house.transform,
-            new Vector3(-3.05f, 8.30f, -4.48f), Vector3.zero,
-            new Vector3(1.75f, 1.45f, 0.14f), glass);
-        CreateHouseCube("Upper_Window_Right", house.transform,
-            new Vector3(3.05f, 8.30f, -4.48f), Vector3.zero,
-            new Vector3(1.75f, 1.45f, 0.14f), glass);
-        CreateHouseCube("Upper_Window_Sill_Left", house.transform,
-            new Vector3(-3.05f, 7.39f, -4.70f), Vector3.zero,
-            new Vector3(2.15f, 0.14f, 0.28f), trim);
-        CreateHouseCube("Upper_Window_Sill_Right", house.transform,
-            new Vector3(3.05f, 7.39f, -4.70f), Vector3.zero,
-            new Vector3(2.15f, 0.14f, 0.28f), trim);
+        CreateUpperStoryWalls(house.transform, balconyDirection, upperFloorCenter,
+            upperFloorHeight, wall, door);
+        CreateUpperWindows(house.transform, -balconyDirection, glass, trim);
 
         CreateHouseCube("Upper_Roof", house.transform,
             new Vector3(0f, upperFloorBase + upperFloorHeight + 0.22f, 0f), Vector3.zero,
             new Vector3(11.40f, 0.35f, 9.20f), roof);
 
-        const float balconyY = upperFloorBase + 0.10f;
-        CreateHouseCube("SecondFloor_Balcony", house.transform,
-            new Vector3(0f, balconyY, 5.35f), Vector3.zero,
-            new Vector3(4.60f, 0.20f, 1.90f), concrete);
-        CreateHouseCube("SecondFloor_Balcony_Rail_Left", house.transform,
-            new Vector3(-2.15f, balconyY + 0.62f, 5.35f), Vector3.zero,
-            new Vector3(0.14f, 1.20f, 1.90f), trim);
-        CreateHouseCube("SecondFloor_Balcony_Rail_Right", house.transform,
-            new Vector3(2.15f, balconyY + 0.62f, 5.35f), Vector3.zero,
-            new Vector3(0.14f, 1.20f, 1.90f), trim);
-        CreateHouseCube("SecondFloor_Balcony_Rail_Back", house.transform,
-            new Vector3(0f, balconyY + 0.62f, 6.25f), Vector3.zero,
-            new Vector3(4.60f, 1.20f, 0.14f), trim);
+        CreateBalcony(house.transform, balconyDirection, upperFloorBase + 0.10f, concrete, trim);
 
-        CreateVerticalLadder(house.transform, "SecondFloor_Ladder", new Vector3(4.20f, 3.35f, 4.82f),
-            trim, concrete);
+        CreateInteriorStaircase(house.transform, concrete, trim);
+    }
+
+    private static Vector3 GetBalconyDirectionLocal(Transform house, Vector3 nextHouseCenter)
+    {
+        Vector3 worldDirection = nextHouseCenter - house.position;
+        worldDirection.y = 0f;
+        if (worldDirection.sqrMagnitude < 0.0001f)
+            return Vector3.forward;
+
+        Vector3 localDirection = Quaternion.Inverse(house.rotation) * worldDirection.normalized;
+        if (Mathf.Abs(localDirection.x) > Mathf.Abs(localDirection.z))
+            return localDirection.x >= 0f ? Vector3.right : Vector3.left;
+
+        return localDirection.z >= 0f ? Vector3.forward : Vector3.back;
+    }
+
+    private static void CreateUpperStoryWalls(Transform house, Vector3 balconyDirection,
+        float wallCenterY, float wallHeight, Material wall, Material door)
+    {
+        bool balconyOnPositiveZ = balconyDirection == Vector3.forward;
+        bool balconyOnNegativeZ = balconyDirection == Vector3.back;
+        bool balconyOnPositiveX = balconyDirection == Vector3.right;
+        bool balconyOnNegativeX = balconyDirection == Vector3.left;
+
+        if (!balconyOnNegativeZ)
+            CreateHouseCube("Upper_Front_Wall", house,
+                new Vector3(0f, wallCenterY, -4.25f), Vector3.zero,
+                new Vector3(10.80f, wallHeight, 0.35f), wall);
+        if (!balconyOnPositiveZ)
+            CreateHouseCube("Upper_Back_Wall", house,
+                new Vector3(0f, wallCenterY, 4.25f), Vector3.zero,
+                new Vector3(10.80f, wallHeight, 0.35f), wall);
+        if (!balconyOnNegativeX)
+            CreateHouseCube("Upper_Left_Wall", house,
+                new Vector3(-5.25f, wallCenterY, 0f), Vector3.zero,
+                new Vector3(0.35f, wallHeight, 8.20f), wall);
+        if (!balconyOnPositiveX)
+            CreateHouseCube("Upper_Right_Wall", house,
+                new Vector3(5.25f, wallCenterY, 0f), Vector3.zero,
+                new Vector3(0.35f, wallHeight, 8.20f), wall);
+
+        CreateUpperDoorWall(house, balconyDirection, wallCenterY, wallHeight, wall, door);
+    }
+
+    private static void CreateUpperDoorWall(Transform house, Vector3 direction,
+        float wallCenterY, float wallHeight, Material wall, Material door)
+    {
+        const float wallTop = 10.32f;
+        const float doorCenterY = 7.42f;
+        const float doorHeight = 3.20f;
+        const float doorWidth = 1.65f;
+        const float segmentCenter = 3.22f;
+        const float segmentSize = 4.37f;
+        const float sideWall = 4.25f;
+        const float doorFace = 4.48f;
+        const float frameFace = 4.60f;
+        const float topHeight = wallTop - (doorCenterY + doorHeight * 0.5f);
+        float topCenterY = wallTop - topHeight * 0.5f;
+
+        if (direction == Vector3.forward || direction == Vector3.back)
+        {
+            float sign = direction.z;
+            CreateHouseCube("Upper_BalconyWall_Left", house,
+                new Vector3(-segmentCenter, wallCenterY, sign * sideWall), Vector3.zero,
+                new Vector3(segmentSize, wallHeight, 0.35f), wall);
+            CreateHouseCube("Upper_BalconyWall_Right", house,
+                new Vector3(segmentCenter, wallCenterY, sign * sideWall), Vector3.zero,
+                new Vector3(segmentSize, wallHeight, 0.35f), wall);
+            CreateHouseCube("Upper_BalconyWall_Top", house,
+                new Vector3(0f, topCenterY, sign * sideWall), Vector3.zero,
+                new Vector3(2.06f, topHeight, 0.35f), wall);
+            CreateHouseCube("Upper_Balcony_Door", house,
+                new Vector3(0f, doorCenterY, sign * doorFace), Vector3.zero,
+                new Vector3(doorWidth, doorHeight, 0.18f), door);
+            CreateHouseCube("Upper_Balcony_Frame_Left", house,
+                new Vector3(-0.95f, doorCenterY, sign * frameFace), Vector3.zero,
+                new Vector3(0.16f, 3.60f, 0.16f), door);
+            CreateHouseCube("Upper_Balcony_Frame_Right", house,
+                new Vector3(0.95f, doorCenterY, sign * frameFace), Vector3.zero,
+                new Vector3(0.16f, 3.60f, 0.16f), door);
+            CreateHouseCube("Upper_Balcony_Frame_Top", house,
+                new Vector3(0f, 9.14f, sign * frameFace), Vector3.zero,
+                new Vector3(2.05f, 0.16f, 0.16f), door);
+            return;
+        }
+
+        float xSign = direction.x;
+        CreateHouseCube("Upper_BalconyWall_Left", house,
+            new Vector3(xSign * sideWall, wallCenterY, -segmentCenter), Vector3.zero,
+            new Vector3(0.35f, wallHeight, segmentSize), wall);
+        CreateHouseCube("Upper_BalconyWall_Right", house,
+            new Vector3(xSign * sideWall, wallCenterY, segmentCenter), Vector3.zero,
+            new Vector3(0.35f, wallHeight, segmentSize), wall);
+        CreateHouseCube("Upper_BalconyWall_Top", house,
+            new Vector3(xSign * sideWall, topCenterY, 0f), Vector3.zero,
+            new Vector3(0.35f, topHeight, 2.06f), wall);
+        CreateHouseCube("Upper_Balcony_Door", house,
+            new Vector3(xSign * doorFace, doorCenterY, 0f), Vector3.zero,
+            new Vector3(0.18f, doorHeight, doorWidth), door);
+        CreateHouseCube("Upper_Balcony_Frame_Left", house,
+            new Vector3(xSign * frameFace, doorCenterY, -0.95f), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Upper_Balcony_Frame_Right", house,
+            new Vector3(xSign * frameFace, doorCenterY, 0.95f), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Upper_Balcony_Frame_Top", house,
+            new Vector3(xSign * frameFace, 9.14f, 0f), Vector3.zero,
+            new Vector3(0.16f, 0.16f, 2.05f), door);
+    }
+
+    private static void CreateUpperWindows(Transform house, Vector3 direction,
+        Material glass, Material trim)
+    {
+        if (direction == Vector3.forward || direction == Vector3.back)
+        {
+            float sign = direction.z;
+            CreateHouseCube("Upper_Window_Left", house,
+                new Vector3(-3.05f, 8.30f, sign * 4.48f), Vector3.zero,
+                new Vector3(1.75f, 1.45f, 0.14f), glass);
+            CreateHouseCube("Upper_Window_Right", house,
+                new Vector3(3.05f, 8.30f, sign * 4.48f), Vector3.zero,
+                new Vector3(1.75f, 1.45f, 0.14f), glass);
+            CreateHouseCube("Upper_Window_Sill_Left", house,
+                new Vector3(-3.05f, 7.39f, sign * 4.70f), Vector3.zero,
+                new Vector3(2.15f, 0.14f, 0.28f), trim);
+            CreateHouseCube("Upper_Window_Sill_Right", house,
+                new Vector3(3.05f, 7.39f, sign * 4.70f), Vector3.zero,
+                new Vector3(2.15f, 0.14f, 0.28f), trim);
+            return;
+        }
+
+        float signX = direction.x;
+        CreateHouseCube("Upper_Window_Left", house,
+            new Vector3(signX * 5.48f, 8.30f, -3.05f), Vector3.zero,
+            new Vector3(0.14f, 1.45f, 1.75f), glass);
+        CreateHouseCube("Upper_Window_Right", house,
+            new Vector3(signX * 5.48f, 8.30f, 3.05f), Vector3.zero,
+            new Vector3(0.14f, 1.45f, 1.75f), glass);
+        CreateHouseCube("Upper_Window_Sill_Left", house,
+            new Vector3(signX * 5.70f, 7.39f, -3.05f), Vector3.zero,
+            new Vector3(0.28f, 0.14f, 2.15f), trim);
+        CreateHouseCube("Upper_Window_Sill_Right", house,
+            new Vector3(signX * 5.70f, 7.39f, 3.05f), Vector3.zero,
+            new Vector3(0.28f, 0.14f, 2.15f), trim);
+    }
+
+    private static void CreateBalcony(Transform house, Vector3 direction, float balconyY,
+        Material concrete, Material trim)
+    {
+        Vector3 side = new Vector3(-direction.z, 0f, direction.x);
+        Vector3 center = direction * 5.35f;
+        Vector3 platformScale = new Vector3(
+            Mathf.Abs(side.x) * 4.60f + Mathf.Abs(direction.x) * 1.90f,
+            0.20f,
+            Mathf.Abs(side.z) * 4.60f + Mathf.Abs(direction.z) * 1.90f);
+        CreateHouseCube("SecondFloor_Balcony", house,
+            new Vector3(center.x, balconyY, center.z), Vector3.zero, platformScale, concrete);
+
+        Vector3 sideRailScale = new Vector3(
+            Mathf.Abs(side.x) * 0.14f + Mathf.Abs(direction.x) * 1.90f,
+            1.20f,
+            Mathf.Abs(side.z) * 0.14f + Mathf.Abs(direction.z) * 1.90f);
+        CreateHouseCube("SecondFloor_Balcony_Rail_Left", house,
+            new Vector3(center.x - side.x * 2.15f, balconyY + 0.62f, center.z - side.z * 2.15f),
+            Vector3.zero, sideRailScale, trim);
+        CreateHouseCube("SecondFloor_Balcony_Rail_Right", house,
+            new Vector3(center.x + side.x * 2.15f, balconyY + 0.62f, center.z + side.z * 2.15f),
+            Vector3.zero, sideRailScale, trim);
+
+        Vector3 outerRailScale = new Vector3(
+            Mathf.Abs(side.x) * 4.60f + Mathf.Abs(direction.x) * 0.14f,
+            1.20f,
+            Mathf.Abs(side.z) * 4.60f + Mathf.Abs(direction.z) * 0.14f);
+        Vector3 outer = center + direction * 0.95f;
+        CreateHouseCube("SecondFloor_Balcony_Rail_Outer", house,
+            new Vector3(outer.x, balconyY + 0.62f, outer.z), Vector3.zero,
+            outerRailScale, trim);
+    }
+
+    private static void CreateInteriorStaircase(Transform house, Material stepMaterial, Material railMaterial)
+    {
+        const int stepCount = 16;
+        const float firstStepZ = -2.80f;
+        const float stepRun = 0.36f;
+        const float stepRise = 0.31f;
+        const float stepWidth = 2.00f;
+        const float baseY = 0.78f;
+        const float stairX = 2.55f;
+
+        for (int i = 0; i < stepCount; i++)
+        {
+            float stepHeight = stepRise * (i + 1);
+            float z = firstStepZ + stepRun * (i + 0.5f);
+            CreateHouseCube($"Interior_Stair_{i:00}", house,
+                new Vector3(stairX, baseY + stepHeight * 0.5f, z), Vector3.zero,
+                new Vector3(stepWidth, stepHeight, stepRun), stepMaterial);
+        }
+
+        float totalRun = stepRun * stepCount;
+        float totalRise = stepRise * stepCount;
+        Vector3 railDirection = new Vector3(0f, totalRise, totalRun).normalized;
+        Vector3 railRotation = Quaternion.LookRotation(railDirection, Vector3.up).eulerAngles;
+        Vector3 railCenter = new Vector3(stairX, baseY + totalRise * 0.5f + 0.85f,
+            firstStepZ + totalRun * 0.5f);
+
+        CreateHouseCube("Interior_Stair_Rail_Left", house,
+            railCenter + Vector3.left * (stepWidth * 0.5f - 0.10f), railRotation,
+            new Vector3(0.12f, 0.12f, Mathf.Sqrt(totalRun * totalRun + totalRise * totalRise)), railMaterial);
+        CreateHouseCube("Interior_Stair_Rail_Right", house,
+            railCenter + Vector3.right * (stepWidth * 0.5f - 0.10f), railRotation,
+            new Vector3(0.12f, 0.12f, Mathf.Sqrt(totalRun * totalRun + totalRise * totalRise)), railMaterial);
     }
 
     private static void EnsureAmbientAudio(GameObject environment)
@@ -555,8 +732,12 @@ public static class BuildMultiIsland
             return;
 
         Vector3 horizontalDirection = horizontal / horizontalDistance;
-        Vector3 start = firstCenter + houseRotation * new Vector3(0f, 5.98f, 6.20f);
+        Vector3 localDirection = Quaternion.Inverse(houseRotation) * horizontalDirection;
+        Vector3 balconyDirection = Mathf.Abs(localDirection.x) > Mathf.Abs(localDirection.z)
+            ? (localDirection.x >= 0f ? Vector3.right : Vector3.left)
+            : (localDirection.z >= 0f ? Vector3.forward : Vector3.back);
         const float landingHeight = 7.25f;
+        Vector3 start = firstCenter + houseRotation * (balconyDirection * 6.20f + Vector3.up * 5.98f);
         Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * landingHeight;
         CreateLadderBetweenPoints(parent, name, start, end, railMaterial, stepMaterial, 2.3f);
         CreateUpperLanding(parent, $"{name}_Landing", secondCenter, horizontalDirection,
