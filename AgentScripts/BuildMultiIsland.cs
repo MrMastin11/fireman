@@ -43,6 +43,10 @@ public static class BuildMultiIsland
 
         Material grass = LoadMaterial("Assets/Materials/Grass.mat");
         Material concrete = LoadMaterial("Assets/Materials/Concrete.mat");
+        Material wall = LoadMaterial("Assets/Materials/House_Wall.mat");
+        Material door = LoadMaterial("Assets/Materials/Door.mat");
+        Material glass = LoadMaterial("Assets/Materials/Window_Glass.mat");
+        Material roof = LoadMaterial("Assets/Materials/House_Roof.mat");
         Material trim = LoadMaterial("Assets/Materials/House_Trim.mat");
         Material hydrantMetal = LoadMaterial("Assets/Materials/Hydrant_Metal.mat");
         Material roofEdge = LoadMaterial("Assets/Materials/Roof_Edge.mat");
@@ -156,6 +160,8 @@ public static class BuildMultiIsland
                 clonedTree.transform.localScale = Vector3.one * (0.9f + (i % 3) * 0.08f);
             }
 
+            ConfigureHouseVariant(houseInstance, i + 1, wall, door, glass, roof, trim, concrete);
+
             if (i == centers.Length - 1)
                 finalHouseInstance = houseInstance;
 
@@ -174,6 +180,12 @@ public static class BuildMultiIsland
         {
             CreateLadder(layout.transform, $"FireLadder_{labels[i]}_{labels[i + 1]}",
                 centers[i], centers[i + 1], trim, hydrantMetal);
+
+            if (GetHouseVariant(i + 1) == 3)
+            {
+                CreateUpperLadder(layout.transform, $"FireLadder_Upper_{labels[i]}_{labels[i + 1]}",
+                    centers[i], centers[i + 1], houseRotations[i], trim, hydrantMetal);
+            }
         }
 
         SerializedObject fireSerialized = new SerializedObject(fireSystem);
@@ -245,6 +257,178 @@ public static class BuildMultiIsland
             return Quaternion.identity;
 
         return Quaternion.LookRotation(-directionToLadder.normalized, Vector3.up);
+    }
+
+    private static int GetHouseVariant(int sectionNumber)
+    {
+        if (sectionNumber % 3 == 0)
+            return 3;
+        if (sectionNumber % 2 == 0)
+            return 2;
+        return 1;
+    }
+
+    private static void ConfigureHouseVariant(GameObject house, int sectionNumber,
+        Material wall, Material door, Material glass, Material roof, Material trim, Material concrete)
+    {
+        switch (GetHouseVariant(sectionNumber))
+        {
+            case 2:
+                ConfigureElongatedHouse(house, wall, door);
+                break;
+            case 3:
+                ConfigureTwoStoryHouse(house, wall, door, glass, roof, trim, concrete);
+                break;
+        }
+    }
+
+    private static void ConfigureElongatedHouse(GameObject house, Material wall, Material door)
+    {
+        const float depthScale = 1.45f;
+
+        Transform[] children = house.GetComponentsInChildren<Transform>(true);
+        foreach (Transform child in children)
+        {
+            if (child == house.transform)
+                continue;
+
+            child.localPosition = new Vector3(
+                child.localPosition.x,
+                child.localPosition.y,
+                child.localPosition.z * depthScale);
+            child.localScale = new Vector3(
+                child.localScale.x,
+                child.localScale.y,
+                child.localScale.z * depthScale);
+        }
+
+        Transform backWall = house.transform.Find("Back_Wall");
+        if (backWall != null)
+            backWall.gameObject.SetActive(false);
+
+        float wallZ = 4.25f * depthScale;
+        CreateHouseCube("Passage_BackWall_Left", house.transform,
+            new Vector3(-3.22f, 3.20f, wallZ), Vector3.zero,
+            new Vector3(4.37f, 5.20f, 0.35f), wall);
+        CreateHouseCube("Passage_BackWall_Right", house.transform,
+            new Vector3(3.22f, 3.20f, wallZ), Vector3.zero,
+            new Vector3(4.37f, 5.20f, 0.35f), wall);
+        CreateHouseCube("Passage_BackWall_Top", house.transform,
+            new Vector3(0f, 4.90f, wallZ), Vector3.zero,
+            new Vector3(2.06f, 1.80f, 0.35f), wall);
+
+        float doorZ = 4.48f * depthScale;
+        float frameZ = 4.60f * depthScale;
+        CreateHouseCube("Passage_Back_Door", house.transform,
+            new Vector3(0f, 2.20f, doorZ), Vector3.zero,
+            new Vector3(1.65f, 3.20f, 0.18f), door);
+        CreateHouseCube("Passage_Back_Frame_Left", house.transform,
+            new Vector3(-0.95f, 2.20f, frameZ), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Passage_Back_Frame_Right", house.transform,
+            new Vector3(0.95f, 2.20f, frameZ), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Passage_Back_Frame_Top", house.transform,
+            new Vector3(0f, 3.92f, frameZ), Vector3.zero,
+            new Vector3(2.05f, 0.16f, 0.16f), door);
+        CreateHouseCube("Passage_Back_Threshold", house.transform,
+            new Vector3(0f, 0.77f, 4.72f * depthScale), Vector3.zero,
+            new Vector3(2.15f, 0.16f, 0.30f), door);
+    }
+
+    private static void ConfigureTwoStoryHouse(GameObject house, Material wall, Material door,
+        Material glass, Material roof, Material trim, Material concrete)
+    {
+        string[] lowerRoofParts =
+        {
+            "Roof_Left", "Roof_Right", "Roof_Ridge_Cap", "Roof_Shell",
+            "Roof_Interior_Closure_Left", "Roof_Interior_Closure_Right",
+            "Front_Gable_Trim_Left", "Front_Gable_Trim_Right",
+            "Back_Gable_Trim_Left", "Back_Gable_Trim_Right",
+            "Front_Roof_Fascia_Left", "Front_Roof_Fascia_Right",
+            "Back_Roof_Fascia_Left", "Back_Roof_Fascia_Right",
+            "Front_Gable_Wall", "Back_Gable_Wall", "Chimney", "Chimney_Cap"
+        };
+
+        for (int i = 0; i < lowerRoofParts.Length; i++)
+        {
+            Transform part = house.transform.Find(lowerRoofParts[i]);
+            if (part != null)
+                part.gameObject.SetActive(false);
+        }
+
+        const float upperFloorBase = 5.82f;
+        const float upperFloorHeight = 4.50f;
+        float upperFloorCenter = upperFloorBase + upperFloorHeight * 0.5f;
+
+        CreateHouseCube("Upper_Floor", house.transform,
+            new Vector3(0f, upperFloorBase - 0.12f, 0f), Vector3.zero,
+            new Vector3(10.70f, 0.24f, 8.20f), concrete);
+        CreateHouseCube("Upper_Front_Wall", house.transform,
+            new Vector3(0f, upperFloorCenter, -4.25f), Vector3.zero,
+            new Vector3(10.80f, upperFloorHeight, 0.35f), wall);
+        CreateHouseCube("Upper_Left_Wall", house.transform,
+            new Vector3(-5.25f, upperFloorCenter, 0f), Vector3.zero,
+            new Vector3(0.35f, upperFloorHeight, 8.20f), wall);
+        CreateHouseCube("Upper_Right_Wall", house.transform,
+            new Vector3(5.25f, upperFloorCenter, 0f), Vector3.zero,
+            new Vector3(0.35f, upperFloorHeight, 8.20f), wall);
+
+        CreateHouseCube("Upper_BackWall_Left", house.transform,
+            new Vector3(-3.22f, upperFloorCenter, 4.25f), Vector3.zero,
+            new Vector3(4.37f, upperFloorHeight, 0.35f), wall);
+        CreateHouseCube("Upper_BackWall_Right", house.transform,
+            new Vector3(3.22f, upperFloorCenter, 4.25f), Vector3.zero,
+            new Vector3(4.37f, upperFloorHeight, 0.35f), wall);
+        CreateHouseCube("Upper_BackWall_Top", house.transform,
+            new Vector3(0f, 9.64f, 4.25f), Vector3.zero,
+            new Vector3(2.06f, 1.36f, 0.35f), wall);
+        CreateHouseCube("Upper_Back_Door", house.transform,
+            new Vector3(0f, 7.42f, 4.48f), Vector3.zero,
+            new Vector3(1.65f, 3.20f, 0.18f), door);
+        CreateHouseCube("Upper_Back_Frame_Left", house.transform,
+            new Vector3(-0.95f, 7.42f, 4.60f), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Upper_Back_Frame_Right", house.transform,
+            new Vector3(0.95f, 7.42f, 4.60f), Vector3.zero,
+            new Vector3(0.16f, 3.60f, 0.16f), door);
+        CreateHouseCube("Upper_Back_Frame_Top", house.transform,
+            new Vector3(0f, 9.14f, 4.60f), Vector3.zero,
+            new Vector3(2.05f, 0.16f, 0.16f), door);
+
+        CreateHouseCube("Upper_Window_Left", house.transform,
+            new Vector3(-3.05f, 8.30f, -4.48f), Vector3.zero,
+            new Vector3(1.75f, 1.45f, 0.14f), glass);
+        CreateHouseCube("Upper_Window_Right", house.transform,
+            new Vector3(3.05f, 8.30f, -4.48f), Vector3.zero,
+            new Vector3(1.75f, 1.45f, 0.14f), glass);
+        CreateHouseCube("Upper_Window_Sill_Left", house.transform,
+            new Vector3(-3.05f, 7.39f, -4.70f), Vector3.zero,
+            new Vector3(2.15f, 0.14f, 0.28f), trim);
+        CreateHouseCube("Upper_Window_Sill_Right", house.transform,
+            new Vector3(3.05f, 7.39f, -4.70f), Vector3.zero,
+            new Vector3(2.15f, 0.14f, 0.28f), trim);
+
+        CreateHouseCube("Upper_Roof", house.transform,
+            new Vector3(0f, upperFloorBase + upperFloorHeight + 0.22f, 0f), Vector3.zero,
+            new Vector3(11.40f, 0.35f, 9.20f), roof);
+
+        const float balconyY = upperFloorBase + 0.10f;
+        CreateHouseCube("SecondFloor_Balcony", house.transform,
+            new Vector3(0f, balconyY, 5.35f), Vector3.zero,
+            new Vector3(4.60f, 0.20f, 1.90f), concrete);
+        CreateHouseCube("SecondFloor_Balcony_Rail_Left", house.transform,
+            new Vector3(-2.15f, balconyY + 0.62f, 5.35f), Vector3.zero,
+            new Vector3(0.14f, 1.20f, 1.90f), trim);
+        CreateHouseCube("SecondFloor_Balcony_Rail_Right", house.transform,
+            new Vector3(2.15f, balconyY + 0.62f, 5.35f), Vector3.zero,
+            new Vector3(0.14f, 1.20f, 1.90f), trim);
+        CreateHouseCube("SecondFloor_Balcony_Rail_Back", house.transform,
+            new Vector3(0f, balconyY + 0.62f, 6.25f), Vector3.zero,
+            new Vector3(4.60f, 1.20f, 0.14f), trim);
+
+        CreateVerticalLadder(house.transform, "SecondFloor_Ladder", new Vector3(4.20f, 3.35f, 4.82f),
+            trim, concrete);
     }
 
     private static void EnsureAmbientAudio(GameObject environment)
@@ -353,25 +537,45 @@ public static class BuildMultiIsland
     {
         Vector3 horizontal = new Vector3(secondCenter.x - firstCenter.x, 0f, secondCenter.z - firstCenter.z);
         float horizontalDistance = horizontal.magnitude;
-        float distance = Vector3.Distance(firstCenter, secondCenter);
         if (horizontalDistance < 0.1f)
             return;
 
         Vector3 horizontalDirection = horizontal / horizontalDistance;
         Vector3 start = firstCenter + horizontalDirection * 9.05f + Vector3.up * 0.04f;
         Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * 0.04f;
+        CreateLadderBetweenPoints(parent, name, start, end, railMaterial, stepMaterial, 2.7f);
+    }
+
+    private static void CreateUpperLadder(Transform parent, string name, Vector3 firstCenter,
+        Vector3 secondCenter, Quaternion houseRotation, Material railMaterial, Material stepMaterial)
+    {
+        Vector3 horizontal = new Vector3(secondCenter.x - firstCenter.x, 0f, secondCenter.z - firstCenter.z);
+        float horizontalDistance = horizontal.magnitude;
+        if (horizontalDistance < 0.1f)
+            return;
+
+        Vector3 horizontalDirection = horizontal / horizontalDistance;
+        Vector3 start = firstCenter + houseRotation * new Vector3(0f, 5.98f, 6.20f);
+        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * 0.04f;
+        CreateLadderBetweenPoints(parent, name, start, end, railMaterial, stepMaterial, 2.3f);
+    }
+
+    private static void CreateLadderBetweenPoints(Transform parent, string name, Vector3 start, Vector3 end,
+        Material railMaterial, Material stepMaterial, float walkwayWidth)
+    {
         Vector3 direction = (end - start).normalized;
         Vector3 midpoint = (start + end) * 0.5f;
         Quaternion ladderRotation = Quaternion.LookRotation(direction, Vector3.up);
         Vector3 ladderEuler = ladderRotation.eulerAngles;
         float ladderLength = Vector3.Distance(start, end);
+        Vector3 horizontalDirection = new Vector3(end.x - start.x, 0f, end.z - start.z).normalized;
         Vector3 side = Vector3.Cross(Vector3.up, horizontalDirection).normalized;
 
         GameObject group = new GameObject(name);
         group.transform.SetParent(parent, false);
 
         CreateCube("Walkway", group.transform, midpoint,
-            ladderEuler, new Vector3(2.7f, 0.18f, ladderLength), stepMaterial);
+            ladderEuler, new Vector3(walkwayWidth, 0.18f, ladderLength), stepMaterial);
         CreateCube("Rail_Left", group.transform, midpoint + Vector3.up * 0.58f + side * 0.95f,
             ladderEuler, new Vector3(0.14f, 0.14f, ladderLength), railMaterial);
         CreateCube("Rail_Right", group.transform, midpoint + Vector3.up * 0.58f - side * 0.95f,
@@ -387,6 +591,31 @@ public static class BuildMultiIsland
         }
     }
 
+    private static void CreateVerticalLadder(Transform parent, string name, Vector3 center,
+        Material railMaterial, Material stepMaterial)
+    {
+        const float height = 5.20f;
+        const float railSpacing = 1.70f;
+        const float rungWidth = 2.05f;
+        float bottom = center.y - height * 0.5f;
+
+        CreateHouseCube($"{name}_Rail_Left", parent,
+            new Vector3(center.x - railSpacing * 0.5f, center.y, center.z), Vector3.zero,
+            new Vector3(0.14f, height, 0.14f), railMaterial);
+        CreateHouseCube($"{name}_Rail_Right", parent,
+            new Vector3(center.x + railSpacing * 0.5f, center.y, center.z), Vector3.zero,
+            new Vector3(0.14f, height, 0.14f), railMaterial);
+
+        int rungCount = Mathf.Max(5, Mathf.CeilToInt(height / 0.60f));
+        for (int i = 0; i <= rungCount; i++)
+        {
+            float t = i / (float)rungCount;
+            CreateHouseCube($"{name}_Rung_{i:00}", parent,
+                new Vector3(center.x, bottom + height * t, center.z), Vector3.zero,
+                new Vector3(rungWidth, 0.12f, 0.14f), stepMaterial);
+        }
+    }
+
     private static GameObject CreateCube(string name, Transform parent, Vector3 position, Vector3 rotation,
         Vector3 scale, Material material)
     {
@@ -396,6 +625,20 @@ public static class BuildMultiIsland
         gameObject.transform.position = position;
         gameObject.transform.eulerAngles = rotation;
         gameObject.transform.localScale = scale;
+        AssignMaterial(gameObject, material);
+        gameObject.isStatic = true;
+        return gameObject;
+    }
+
+    private static GameObject CreateHouseCube(string name, Transform parent, Vector3 localPosition,
+        Vector3 localRotation, Vector3 localScale, Material material)
+    {
+        GameObject gameObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        gameObject.name = name;
+        gameObject.transform.SetParent(parent, false);
+        gameObject.transform.localPosition = localPosition;
+        gameObject.transform.localEulerAngles = localRotation;
+        gameObject.transform.localScale = localScale;
         AssignMaterial(gameObject, material);
         gameObject.isStatic = true;
         return gameObject;
