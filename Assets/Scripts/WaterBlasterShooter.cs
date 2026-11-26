@@ -10,7 +10,7 @@ public class WaterBlasterShooter : MonoBehaviour
 
     [Header("Shooting")]
     [SerializeField] private float shotsPerSecond = 8f;
-    [SerializeField] private float waterPerShot = 2f;
+    [SerializeField] private float waterPerShot = 4f;
     [SerializeField] private float particleSpeed = 34f;
     [SerializeField] private float maxDistance = 80f;
     [SerializeField] private int dropletsPerShot = 24;
