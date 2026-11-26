@@ -170,11 +170,12 @@ public static class BuildMultiIsland
                 finalHouseInstance = houseInstance;
 
             int spawnCount = i + 1;
+            bool twoStoryHouse = GetHouseVariant(i + 1) == 3;
             for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
             {
                 GameObject spawn = new GameObject($"FireSpawnPoint_{labels[i]}_{spawnIndex + 1:00}");
                 spawn.transform.SetParent(houseInstance.transform, false);
-                spawn.transform.localPosition = GetFireSpawnLocalPosition(spawnIndex, spawnCount);
+                spawn.transform.localPosition = GetFireSpawnLocalPosition(spawnIndex, spawnCount, twoStoryHouse);
                 spawn.transform.localRotation = Quaternion.identity;
                 fireSpawnPoints.Add(spawn.transform);
             }
@@ -371,18 +372,7 @@ public static class BuildMultiIsland
         Vector3 balconyDirection = GetBalconyDirectionLocal(house.transform, nextHouseCenter);
 
         const float floorY = upperFloorBase - 0.12f;
-        CreateHouseCube("Upper_Floor_Left", house.transform,
-            new Vector3(-1.73f, floorY, 0f), Vector3.zero,
-            new Vector3(6.54f, 0.24f, 8.20f), concrete);
-        CreateHouseCube("Upper_Floor_Right", house.transform,
-            new Vector3(4.28f, floorY, 0f), Vector3.zero,
-            new Vector3(1.44f, 0.24f, 8.20f), concrete);
-        CreateHouseCube("Upper_Floor_Front", house.transform,
-            new Vector3(1.55f, floorY, -3.50f), Vector3.zero,
-            new Vector3(3.56f, 0.24f, 1.00f), concrete);
-        CreateHouseCube("Upper_Floor_Back", house.transform,
-            new Vector3(1.55f, floorY, 3.50f), Vector3.zero,
-            new Vector3(3.56f, 0.24f, 1.00f), concrete);
+        CreateUpperFloorWithStairOpening(house.transform, balconyDirection, floorY, concrete);
 
         CreateUpperStoryWalls(house.transform, balconyDirection, upperFloorCenter,
             upperFloorHeight, wall, door);
@@ -394,7 +384,7 @@ public static class BuildMultiIsland
 
         CreateBalcony(house.transform, balconyDirection, upperFloorBase + 0.10f, concrete, trim);
 
-        CreateInteriorStaircase(house.transform, concrete, trim);
+        CreateInteriorStaircase(house.transform, balconyDirection, concrete, trim);
     }
 
     private static Vector3 GetBalconyDirectionLocal(Transform house, Vector3 nextHouseCenter)
@@ -444,14 +434,11 @@ public static class BuildMultiIsland
     {
         const float wallTop = 10.32f;
         const float doorCenterY = 7.42f;
-        const float doorHeight = 3.20f;
-        const float doorWidth = 1.65f;
         const float segmentCenter = 3.22f;
         const float segmentSize = 4.37f;
         const float sideWall = 4.25f;
-        const float doorFace = 4.48f;
         const float frameFace = 4.60f;
-        const float topHeight = wallTop - (doorCenterY + doorHeight * 0.5f);
+        const float topHeight = wallTop - (doorCenterY + 1.60f);
         float topCenterY = wallTop - topHeight * 0.5f;
 
         if (direction == Vector3.forward || direction == Vector3.back)
@@ -466,9 +453,6 @@ public static class BuildMultiIsland
             CreateHouseCube("Upper_BalconyWall_Top", house,
                 new Vector3(0f, topCenterY, sign * sideWall), Vector3.zero,
                 new Vector3(2.06f, topHeight, 0.35f), wall);
-            CreateHouseCube("Upper_Balcony_Door", house,
-                new Vector3(0f, doorCenterY, sign * doorFace), Vector3.zero,
-                new Vector3(doorWidth, doorHeight, 0.18f), door);
             CreateHouseCube("Upper_Balcony_Frame_Left", house,
                 new Vector3(-0.95f, doorCenterY, sign * frameFace), Vector3.zero,
                 new Vector3(0.16f, 3.60f, 0.16f), door);
@@ -491,9 +475,6 @@ public static class BuildMultiIsland
         CreateHouseCube("Upper_BalconyWall_Top", house,
             new Vector3(xSign * sideWall, topCenterY, 0f), Vector3.zero,
             new Vector3(0.35f, topHeight, 2.06f), wall);
-        CreateHouseCube("Upper_Balcony_Door", house,
-            new Vector3(xSign * doorFace, doorCenterY, 0f), Vector3.zero,
-            new Vector3(0.18f, doorHeight, doorWidth), door);
         CreateHouseCube("Upper_Balcony_Frame_Left", house,
             new Vector3(xSign * frameFace, doorCenterY, -0.95f), Vector3.zero,
             new Vector3(0.16f, 3.60f, 0.16f), door);
@@ -574,7 +555,46 @@ public static class BuildMultiIsland
             outerRailScale, trim);
     }
 
-    private static void CreateInteriorStaircase(Transform house, Material stepMaterial, Material railMaterial)
+    private static void CreateUpperFloorWithStairOpening(Transform house, Vector3 balconyDirection,
+        float floorY, Material floorMaterial)
+    {
+        const float floorMin = -5.20f;
+        const float floorMax = 5.20f;
+        const float holeHalfWidth = 1.10f;
+        const float holeMinAlong = -3.00f;
+        const float holeMaxAlong = 3.00f;
+
+        bool stairRunsAlongZ = Mathf.Abs(balconyDirection.x) > 0.5f;
+        float stairSide = stairRunsAlongZ
+            ? (balconyDirection.x > 0f ? -2.55f : 2.55f)
+            : (balconyDirection.z > 0f ? -2.55f : 2.55f);
+
+        float holeMinX = stairRunsAlongZ ? stairSide - holeHalfWidth : holeMinAlong;
+        float holeMaxX = stairRunsAlongZ ? stairSide + holeHalfWidth : holeMaxAlong;
+        float holeMinZ = stairRunsAlongZ ? holeMinAlong : stairSide - holeHalfWidth;
+        float holeMaxZ = stairRunsAlongZ ? holeMaxAlong : stairSide + holeHalfWidth;
+
+        CreateFloorPiece("Upper_Floor_Left", house, floorMin, holeMinX, floorMin, floorMax, floorY, floorMaterial);
+        CreateFloorPiece("Upper_Floor_Right", house, holeMaxX, floorMax, floorMin, floorMax, floorY, floorMaterial);
+        CreateFloorPiece("Upper_Floor_Front", house, holeMinX, holeMaxX, floorMin, holeMinZ, floorY, floorMaterial);
+        CreateFloorPiece("Upper_Floor_Back", house, holeMinX, holeMaxX, holeMaxZ, floorMax, floorY, floorMaterial);
+    }
+
+    private static void CreateFloorPiece(string name, Transform house, float minX, float maxX,
+        float minZ, float maxZ, float y, Material material)
+    {
+        float width = maxX - minX;
+        float depth = maxZ - minZ;
+        if (width <= 0.05f || depth <= 0.05f)
+            return;
+
+        CreateHouseCube(name, house,
+            new Vector3((minX + maxX) * 0.5f, y, (minZ + maxZ) * 0.5f), Vector3.zero,
+            new Vector3(width, 0.24f, depth), material);
+    }
+
+    private static void CreateInteriorStaircase(Transform house, Vector3 balconyDirection,
+        Material stepMaterial, Material railMaterial)
     {
         const int stepCount = 16;
         const float firstStepZ = -2.80f;
@@ -582,30 +602,43 @@ public static class BuildMultiIsland
         const float stepRise = 0.31f;
         const float stepWidth = 2.00f;
         const float baseY = 0.78f;
-        const float stairX = 2.55f;
+        bool stairRunsAlongZ = Mathf.Abs(balconyDirection.x) > 0.5f;
+        float stairSide = stairRunsAlongZ
+            ? (balconyDirection.x > 0f ? -2.55f : 2.55f)
+            : (balconyDirection.z > 0f ? -2.55f : 2.55f);
+        Vector3 stairAxis = stairRunsAlongZ ? Vector3.forward : Vector3.right;
+        Vector3 stairSideOffset = stairRunsAlongZ
+            ? new Vector3(stairSide, 0f, 0f)
+            : new Vector3(0f, 0f, stairSide);
 
         for (int i = 0; i < stepCount; i++)
         {
             float stepHeight = stepRise * (i + 1);
-            float z = firstStepZ + stepRun * (i + 0.5f);
+            Vector3 along = stairAxis * (firstStepZ + stepRun * (i + 0.5f));
+            Vector3 position = stairSideOffset + along;
+            Vector3 scale = stairRunsAlongZ
+                ? new Vector3(stepWidth, stepHeight, stepRun)
+                : new Vector3(stepRun, stepHeight, stepWidth);
             CreateHouseCube($"Interior_Stair_{i:00}", house,
-                new Vector3(stairX, baseY + stepHeight * 0.5f, z), Vector3.zero,
-                new Vector3(stepWidth, stepHeight, stepRun), stepMaterial);
+                new Vector3(position.x, baseY + stepHeight * 0.5f, position.z), Vector3.zero,
+                scale, stepMaterial);
         }
 
         float totalRun = stepRun * stepCount;
         float totalRise = stepRise * stepCount;
-        Vector3 railDirection = new Vector3(0f, totalRise, totalRun).normalized;
+        Vector3 railDirection = (stairAxis * totalRun + Vector3.up * totalRise).normalized;
         Vector3 railRotation = Quaternion.LookRotation(railDirection, Vector3.up).eulerAngles;
-        Vector3 railCenter = new Vector3(stairX, baseY + totalRise * 0.5f + 0.85f,
-            firstStepZ + totalRun * 0.5f);
+        Vector3 railCenter = stairSideOffset + stairAxis * (firstStepZ + totalRun * 0.5f);
+        railCenter.y = baseY + totalRise * 0.5f + 0.85f;
+        Vector3 railSide = stairRunsAlongZ ? Vector3.right : Vector3.forward;
+        float railLength = Mathf.Sqrt(totalRun * totalRun + totalRise * totalRise);
 
         CreateHouseCube("Interior_Stair_Rail_Left", house,
-            railCenter + Vector3.left * (stepWidth * 0.5f - 0.10f), railRotation,
-            new Vector3(0.12f, 0.12f, Mathf.Sqrt(totalRun * totalRun + totalRise * totalRise)), railMaterial);
+            railCenter - railSide * (stepWidth * 0.5f - 0.10f), railRotation,
+            new Vector3(0.12f, 0.12f, railLength), railMaterial);
         CreateHouseCube("Interior_Stair_Rail_Right", house,
-            railCenter + Vector3.right * (stepWidth * 0.5f - 0.10f), railRotation,
-            new Vector3(0.12f, 0.12f, Mathf.Sqrt(totalRun * totalRun + totalRise * totalRise)), railMaterial);
+            railCenter + railSide * (stepWidth * 0.5f - 0.10f), railRotation,
+            new Vector3(0.12f, 0.12f, railLength), railMaterial);
     }
 
     private static void EnsureAmbientAudio(GameObject environment)
@@ -676,7 +709,7 @@ public static class BuildMultiIsland
             UnityEngine.Object.DestroyImmediate(spawnObject);
     }
 
-    private static Vector3 GetFireSpawnLocalPosition(int index, int count)
+    private static Vector3 GetFireSpawnLocalPosition(int index, int count, bool twoStoryHouse)
     {
         if (count == 1)
             return new Vector3(0f, 1.35f, 0f);
@@ -688,7 +721,9 @@ public static class BuildMultiIsland
         const float spacing = 1.55f;
         float x = (column - (columns - 1) * 0.5f) * spacing;
         float z = (row - (rows - 1) * 0.5f) * spacing;
-        return new Vector3(x, 1.35f, z);
+        int upperStart = Mathf.Max(1, Mathf.CeilToInt(count * 0.5f));
+        float y = twoStoryHouse && index >= upperStart ? 7.10f : 1.35f;
+        return new Vector3(x, y, z);
     }
 
     private static void CreateRoofInteriorClosure(GameObject house, Material material)

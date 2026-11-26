@@ -294,7 +294,10 @@ public class FireSpreadSystem : MonoBehaviour
             {
                 Vector3 localOffset = point - source.houseAnchor.position;
                 localOffset.x = Mathf.Clamp(localOffset.x, -houseSpreadBounds.x, houseSpreadBounds.x);
-                localOffset.y = Mathf.Clamp(localOffset.y, -houseSpreadBounds.y, houseSpreadBounds.y);
+                float verticalBounds = IsTwoStoryHouse(source.houseAnchor)
+                    ? Mathf.Max(houseSpreadBounds.y, 7.2f)
+                    : houseSpreadBounds.y;
+                localOffset.y = Mathf.Clamp(localOffset.y, -verticalBounds, verticalBounds);
                 localOffset.z = Mathf.Clamp(localOffset.z, -houseSpreadBounds.z, houseSpreadBounds.z);
                 point = source.houseAnchor.position + localOffset;
             }
@@ -304,6 +307,11 @@ public class FireSpreadSystem : MonoBehaviour
                 && SpawnFire(point, source.houseAnchor, false))
                 return;
         }
+    }
+
+    private static bool IsTwoStoryHouse(Transform house)
+    {
+        return house != null && house.Find("Upper_Roof") != null;
     }
 
     private bool SpawnFire(Vector3 position, Transform houseAnchor, bool countsForFinalObjective)
