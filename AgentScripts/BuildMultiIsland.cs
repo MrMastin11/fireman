@@ -35,6 +35,7 @@ public static class BuildMultiIsland
 
         RemoveTestFireObjects(house);
         EnsureAmbientAudio(environment);
+        EnsurePlayerAudioListener(environment);
 
         oldGround.SetActive(false);
         path.transform.position = new Vector3(0f, -0.04f, -7.35f);
@@ -87,8 +88,10 @@ public static class BuildMultiIsland
         Quaternion[] houseRotations = new Quaternion[centers.Length];
         for (int i = 0; i < centers.Length; i++)
         {
-            int targetIndex = i == 0 ? 1 : i - 1;
-            houseRotations[i] = GetDoorFacingRotation(centers[i], centers[targetIndex]);
+            Vector3 doorTarget = i == 0
+                ? centers[i] + Vector3.back * 8.2f
+                : centers[i - 1];
+            houseRotations[i] = GetDoorFacingRotation(centers[i], doorTarget);
         }
 
         if (playerStart != null)
@@ -268,6 +271,28 @@ public static class BuildMultiIsland
         source.dopplerLevel = 0f;
         source.enabled = source.clip != null;
         EditorUtility.SetDirty(audioObject);
+    }
+
+    private static void EnsurePlayerAudioListener(GameObject environment)
+    {
+        Camera[] cameras = Resources.FindObjectsOfTypeAll<Camera>()
+            .Where(camera => camera.gameObject.scene.IsValid())
+            .ToArray();
+        Camera playerCamera = cameras.FirstOrDefault(camera => camera.name == "PlayerCamera");
+
+        foreach (Camera camera in cameras)
+        {
+            if (camera.name == "Main Camera")
+                camera.enabled = false;
+        }
+
+        if (playerCamera == null)
+            return;
+
+        playerCamera.enabled = true;
+        if (playerCamera.GetComponent<AudioListener>() == null)
+            playerCamera.gameObject.AddComponent<AudioListener>();
+        EditorUtility.SetDirty(playerCamera.gameObject);
     }
 
     private static void RemoveTestFireObjects(GameObject house)
