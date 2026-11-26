@@ -55,19 +55,21 @@ public static class BuildMultiIsland
         layout.isStatic = true;
 
         CreateCube("Water_Between_Islands", layout.transform, new Vector3(0f, -0.95f, 0f),
-            Vector3.zero, new Vector3(72f, 0.5f, 72f), water);
+            Vector3.zero, new Vector3(84f, 0.5f, 84f), water);
 
+        const float islandSpacing = 24f;
+        const float levelRise = 1.5f;
         Vector3[] centers =
         {
             new Vector3(0f, 0f, 0f),
-            new Vector3(0f, 0f, 20f),
-            new Vector3(20f, 0f, 20f),
-            new Vector3(20f, 0f, 0f),
-            new Vector3(20f, 0f, -20f),
-            new Vector3(0f, 0f, -20f),
-            new Vector3(-20f, 0f, -20f),
-            new Vector3(-20f, 0f, 0f),
-            new Vector3(-20f, 0f, 20f)
+            new Vector3(0f, levelRise * 1f, islandSpacing),
+            new Vector3(islandSpacing, levelRise * 2f, islandSpacing),
+            new Vector3(islandSpacing, levelRise * 3f, 0f),
+            new Vector3(islandSpacing, levelRise * 4f, -islandSpacing),
+            new Vector3(0f, levelRise * 5f, -islandSpacing),
+            new Vector3(-islandSpacing, levelRise * 6f, -islandSpacing),
+            new Vector3(-islandSpacing, levelRise * 7f, 0f),
+            new Vector3(-islandSpacing, levelRise * 8f, islandSpacing)
         };
         string[] labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
         var fireSpawnPoints = new List<Transform>(centers.Length);
@@ -187,26 +189,30 @@ public static class BuildMultiIsland
         Material railMaterial, Material stepMaterial)
     {
         Vector3 horizontal = new Vector3(secondCenter.x - firstCenter.x, 0f, secondCenter.z - firstCenter.z);
-        float distance = horizontal.magnitude;
-        if (distance < 0.1f)
+        float horizontalDistance = horizontal.magnitude;
+        float distance = Vector3.Distance(firstCenter, secondCenter);
+        if (horizontalDistance < 0.1f)
             return;
 
-        Vector3 direction = horizontal / distance;
-        Vector3 start = firstCenter + direction * 9.05f;
-        Vector3 end = secondCenter - direction * 9.05f;
+        Vector3 horizontalDirection = horizontal / horizontalDistance;
+        Vector3 start = firstCenter + horizontalDirection * 9.05f + Vector3.up * 0.04f;
+        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * 0.04f;
+        Vector3 direction = (end - start).normalized;
         Vector3 midpoint = (start + end) * 0.5f;
-        float angle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg;
+        Quaternion ladderRotation = Quaternion.LookRotation(direction, Vector3.up);
+        Vector3 ladderEuler = ladderRotation.eulerAngles;
         float ladderLength = Vector3.Distance(start, end);
+        Vector3 side = Vector3.Cross(Vector3.up, horizontalDirection).normalized;
 
         GameObject group = new GameObject(name);
         group.transform.SetParent(parent, false);
 
-        CreateCube("Walkway", group.transform, midpoint + Vector3.up * 0.04f,
-            new Vector3(0f, angle, 0f), new Vector3(2.7f, 0.18f, ladderLength), stepMaterial);
-        CreateCube("Rail_Left", group.transform, midpoint + Vector3.up * 0.58f + Vector3.left * 0.95f,
-            new Vector3(0f, angle, 0f), new Vector3(0.14f, 0.14f, ladderLength), railMaterial);
-        CreateCube("Rail_Right", group.transform, midpoint + Vector3.up * 0.58f + Vector3.right * 0.95f,
-            new Vector3(0f, angle, 0f), new Vector3(0.14f, 0.14f, ladderLength), railMaterial);
+        CreateCube("Walkway", group.transform, midpoint,
+            ladderEuler, new Vector3(2.7f, 0.18f, ladderLength), stepMaterial);
+        CreateCube("Rail_Left", group.transform, midpoint + Vector3.up * 0.58f + side * 0.95f,
+            ladderEuler, new Vector3(0.14f, 0.14f, ladderLength), railMaterial);
+        CreateCube("Rail_Right", group.transform, midpoint + Vector3.up * 0.58f - side * 0.95f,
+            ladderEuler, new Vector3(0.14f, 0.14f, ladderLength), railMaterial);
 
         int rungCount = Mathf.Max(3, Mathf.CeilToInt(ladderLength / 0.65f));
         for (int i = 0; i <= rungCount; i++)
@@ -214,7 +220,7 @@ public static class BuildMultiIsland
             float t = i / (float)rungCount;
             Vector3 position = Vector3.Lerp(start, end, t) + Vector3.up * 0.18f;
             CreateCube($"Rung_{i:00}", group.transform, position,
-                new Vector3(0f, angle, 0f), new Vector3(2.15f, 0.12f, 0.14f), railMaterial);
+                ladderEuler, new Vector3(2.15f, 0.12f, 0.14f), railMaterial);
         }
     }
 
