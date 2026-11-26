@@ -556,8 +556,27 @@ public static class BuildMultiIsland
 
         Vector3 horizontalDirection = horizontal / horizontalDistance;
         Vector3 start = firstCenter + houseRotation * new Vector3(0f, 5.98f, 6.20f);
-        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * 0.04f;
+        const float landingHeight = 7.25f;
+        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * landingHeight;
         CreateLadderBetweenPoints(parent, name, start, end, railMaterial, stepMaterial, 2.3f);
+        CreateUpperLanding(parent, $"{name}_Landing", secondCenter, horizontalDirection,
+            landingHeight, railMaterial, stepMaterial);
+    }
+
+    private static void CreateUpperLanding(Transform parent, string name, Vector3 islandCenter,
+        Vector3 directionToIsland, float height, Material railMaterial, Material stepMaterial)
+    {
+        Vector3 center = islandCenter - directionToIsland * 8.65f + Vector3.up * (height - 0.10f);
+        Vector3 side = Vector3.Cross(Vector3.up, directionToIsland).normalized;
+        GameObject group = new GameObject(name);
+        group.transform.SetParent(parent, false);
+
+        CreateCube("Deck", group.transform, center, Vector3.zero,
+            new Vector3(2.3f, 0.18f, 2.0f), stepMaterial);
+        CreateCube("Rail_Left", group.transform, center + Vector3.up * 0.58f + side * 0.95f,
+            Vector3.zero, new Vector3(0.14f, 1.20f, 2.0f), railMaterial);
+        CreateCube("Rail_Right", group.transform, center + Vector3.up * 0.58f - side * 0.95f,
+            Vector3.zero, new Vector3(0.14f, 1.20f, 2.0f), railMaterial);
     }
 
     private static void CreateLadderBetweenPoints(Transform parent, string name, Vector3 start, Vector3 end,

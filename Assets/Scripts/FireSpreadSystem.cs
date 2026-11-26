@@ -30,6 +30,7 @@ public class FireSpreadSystem : MonoBehaviour
     private int poolCursor;
     private int activeFireCount;
     private bool initialFiresSpawned;
+    private bool allHousesExtinguished;
     private Transform[] houseRoots = new Transform[0];
 
     private sealed class FireNode
@@ -62,6 +63,9 @@ public class FireSpreadSystem : MonoBehaviour
             return CountExtinguishedHouses();
         }
     }
+
+    public bool IsAllHousesExtinguished => allHousesExtinguished;
+    public event System.Action AllHousesExtinguished;
     public int ExtinguishedFireCount { get; private set; }
     public int FinalHouseInitialFireCount => CountInitialFiresForHouse(finalHouse);
     public int ExtinguishedFinalHouseFireCount { get; private set; }
@@ -98,6 +102,8 @@ public class FireSpreadSystem : MonoBehaviour
     {
         if (!initialFiresSpawned)
             SpawnInitialHouseFires();
+
+        CheckAllHousesExtinguished();
 
         for (int i = 0; i < firePool.Length; i++)
         {
@@ -344,6 +350,21 @@ public class FireSpreadSystem : MonoBehaviour
             if (fire.active && (fire.transform.position - position).sqrMagnitude <= radiusSqr)
                 ReleaseFire(fire);
         }
+
+        CheckAllHousesExtinguished();
+    }
+
+    private void CheckAllHousesExtinguished()
+    {
+        if (allHousesExtinguished || !initialFiresSpawned)
+            return;
+
+        int totalHouses = HouseCount;
+        if (totalHouses <= 0 || ExtinguishedHouseCount < totalHouses)
+            return;
+
+        allHousesExtinguished = true;
+        AllHousesExtinguished?.Invoke();
     }
 
     private bool CapsuleTouchesFire(Vector3 capsuleBottom, Vector3 capsuleTop, float capsuleRadius)
