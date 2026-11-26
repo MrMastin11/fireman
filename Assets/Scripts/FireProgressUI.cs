@@ -41,8 +41,8 @@ public class FireProgressUI : MonoBehaviour
         if (progressText == null || fireSystem == null)
             return;
 
-        int total = fireSystem.FinalHouseInitialFireCount;
-        int extinguished = Mathf.Min(fireSystem.ExtinguishedFinalHouseFireCount, total);
-        progressText.text = $"EXTINGUISHED: {extinguished}/{total}";
+        int total = fireSystem.HouseCount;
+        int extinguished = Mathf.Clamp(fireSystem.ExtinguishedHouseCount, 0, total);
+        progressText.text = $"HOUSES EXTINGUISHED: {extinguished}/{total}";
     }
 }

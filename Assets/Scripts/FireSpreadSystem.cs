@@ -30,6 +30,7 @@ public class FireSpreadSystem : MonoBehaviour
     private int poolCursor;
     private int activeFireCount;
     private bool initialFiresSpawned;
+    private Transform[] houseRoots = new Transform[0];
 
     private sealed class FireNode
     {
@@ -44,6 +45,23 @@ public class FireSpreadSystem : MonoBehaviour
 
     public int ActiveFireCount => activeFireCount;
     public int ConfiguredSpawnPointCount => fireSpawnPoints == null ? 0 : fireSpawnPoints.Length;
+    public int HouseCount
+    {
+        get
+        {
+            EnsureHouseRootsResolved();
+            return houseRoots.Length;
+        }
+    }
+
+    public int ExtinguishedHouseCount
+    {
+        get
+        {
+            EnsureHouseRootsResolved();
+            return CountExtinguishedHouses();
+        }
+    }
     public int ExtinguishedFireCount { get; private set; }
     public int FinalHouseInitialFireCount => CountInitialFiresForHouse(finalHouse);
     public int ExtinguishedFinalHouseFireCount { get; private set; }
@@ -71,6 +89,7 @@ public class FireSpreadSystem : MonoBehaviour
     private void Start()
     {
         ResolveFinalHouse();
+        ResolveHouseRoots();
         if (spawnAllHouseFiresAtStart)
             SpawnInitialHouseFires();
     }
@@ -213,6 +232,35 @@ public class FireSpreadSystem : MonoBehaviour
                 return;
             }
         }
+    }
+
+    private void ResolveHouseRoots()
+    {
+        if (fireSpawnPoints == null)
+        {
+            houseRoots = new Transform[0];
+            return;
+        }
+
+        var houses = new List<Transform>();
+        for (int i = 0; i < fireSpawnPoints.Length; i++)
+        {
+            Transform spawnPoint = fireSpawnPoints[i];
+            if (spawnPoint == null)
+                continue;
+
+            Transform house = FindHouseRoot(spawnPoint);
+            if (house != null && !houses.Contains(house))
+                houses.Add(house);
+        }
+
+        houseRoots = houses.ToArray();
+    }
+
+    private void EnsureHouseRootsResolved()
+    {
+        if (houseRoots.Length == 0 && fireSpawnPoints != null && fireSpawnPoints.Length > 0)
+            ResolveHouseRoots();
     }
 
     private static Transform FindHouseRoot(Transform point)
@@ -360,6 +408,22 @@ public class FireSpreadSystem : MonoBehaviour
         for (int i = 0; i < fireSpawnPoints.Length; i++)
         {
             if (FindHouseRoot(fireSpawnPoints[i]) == house)
+                count++;
+        }
+
+        return count;
+    }
+
+    private int CountExtinguishedHouses()
+    {
+        if (!initialFiresSpawned)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < houseRoots.Length; i++)
+        {
+            Transform house = houseRoots[i];
+            if (house != null && CountActiveForHouse(house) == 0)
                 count++;
         }
 
