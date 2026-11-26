@@ -66,13 +66,16 @@ public class FirstPersonController : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current == null || Mouse.current == null)
+        if (Keyboard.current == null)
+        {
+            AnimateView();
             return;
+        }
 
         if (Keyboard.current.escapeKey.wasPressedThisFrame)
             LockCursor(Cursor.lockState != CursorLockMode.Locked);
 
-        if (Cursor.lockState == CursorLockMode.Locked)
+        if (Mouse.current != null && Cursor.lockState == CursorLockMode.Locked)
             Look();
 
         Move();
@@ -89,15 +92,17 @@ public class FirstPersonController : MonoBehaviour
         input = Vector2.ClampMagnitude(input, 1f);
         float speed = Keyboard.current.leftShiftKey.isPressed ? sprintSpeed : walkSpeed;
         Vector3 direction = transform.right * input.x + transform.forward * input.y;
-        characterController.Move(direction * speed * Time.deltaTime);
+        bool wasGrounded = characterController.isGrounded;
 
-        if (characterController.isGrounded && verticalVelocity < 0f)
+        if (wasGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
 
-        if (characterController.isGrounded && Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (wasGrounded && Keyboard.current.spaceKey.wasPressedThisFrame)
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
 
         verticalVelocity += gravity * Time.deltaTime;
+
+        characterController.Move(direction * speed * Time.deltaTime);
         characterController.Move(Vector3.up * verticalVelocity * Time.deltaTime);
 
         bool movingOnGround = input.sqrMagnitude > 0.01f && characterController.isGrounded;
