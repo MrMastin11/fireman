@@ -56,7 +56,11 @@ Shader "Skybox/Panoramic Seamless"
             {
                 Varyings output;
                 output.positionCS = TransformObjectToHClip(input.positionOS);
+#if UNITY_REVERSED_Z
+                output.positionCS.z = 0.0;
+#else
                 output.positionCS.z = output.positionCS.w;
+#endif
                 output.direction = input.positionOS;
                 return output;
             }
