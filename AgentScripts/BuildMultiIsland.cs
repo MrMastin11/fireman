@@ -570,13 +570,13 @@ public static class BuildMultiIsland
         const float floorMin = -5.20f;
         const float floorMax = 5.20f;
         const float holeHalfWidth = 1.10f;
-        const float holeMinAlong = -3.00f;
-        const float holeMaxAlong = 3.00f;
+        const float holeMinAlong = -1.30f;
+        const float holeMaxAlong = 4.20f;
 
-        bool stairRunsAlongZ = Mathf.Abs(balconyDirection.x) > 0.5f;
-        float stairSide = stairRunsAlongZ
-            ? (balconyDirection.x > 0f ? -2.55f : 2.55f)
-            : (balconyDirection.z > 0f ? -2.55f : 2.55f);
+        const bool stairRunsAlongZ = true;
+        float stairSide = balconyDirection.x > 0.5f ? -3.55f : 3.55f;
+        if (Mathf.Abs(balconyDirection.z) > 0.5f)
+            stairSide = -3.55f;
 
         float holeMinX = stairRunsAlongZ ? stairSide - holeHalfWidth : holeMinAlong;
         float holeMaxX = stairRunsAlongZ ? stairSide + holeHalfWidth : holeMaxAlong;
@@ -606,19 +606,17 @@ public static class BuildMultiIsland
         Material stepMaterial, Material railMaterial)
     {
         const int stepCount = 16;
-        const float firstStepZ = -2.80f;
-        const float stepRun = 0.36f;
+        const float firstStepZ = -1.00f;
+        const float stepRun = 0.32f;
         const float stepRise = 0.31f;
         const float stepWidth = 2.00f;
         const float baseY = 0.78f;
-        bool stairRunsAlongZ = Mathf.Abs(balconyDirection.x) > 0.5f;
-        float stairSide = stairRunsAlongZ
-            ? (balconyDirection.x > 0f ? -2.55f : 2.55f)
-            : (balconyDirection.z > 0f ? -2.55f : 2.55f);
-        Vector3 stairAxis = stairRunsAlongZ ? Vector3.forward : Vector3.right;
-        Vector3 stairSideOffset = stairRunsAlongZ
-            ? new Vector3(stairSide, 0f, 0f)
-            : new Vector3(0f, 0f, stairSide);
+        const bool stairRunsAlongZ = true;
+        float stairSide = balconyDirection.x > 0.5f ? -3.55f : 3.55f;
+        if (Mathf.Abs(balconyDirection.z) > 0.5f)
+            stairSide = -3.55f;
+        Vector3 stairAxis = Vector3.forward;
+        Vector3 stairSideOffset = new Vector3(stairSide, 0f, 0f);
 
         for (int i = 0; i < stepCount; i++)
         {
