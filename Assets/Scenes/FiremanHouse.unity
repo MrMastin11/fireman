@@ -3434,7 +3434,7 @@ MonoBehaviour:
   playerController: {fileID: 1037116478}
   playerVitals: {fileID: 1037116482}
   shotsPerSecond: 8
-  waterPerShot: 1
+  waterPerShot: 2
   particleSpeed: 34
   maxDistance: 80
   dropletsPerShot: 24
@@ -3448,6 +3448,7 @@ MonoBehaviour:
   maxDropletLifetime: 0.9
   gravity: -18
   bounceDamping: 0.55
+  ricochetSideDeflection: 0.55
   maxBounces: 2
   collisionRadius: 0.08
   muzzleViewportPosition: {x: 0.62, y: 0.34}
@@ -3466,9 +3467,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FirefighterVitals
   maxHealth: 100
-  fireDamagePerSecond: 1
+  fireDamagePerSecond: 10
   maxWater: 100
-  waterRechargePerSecond: 10
+  waterRechargePerSecond: 15
 --- !u!1 &1037991927
 GameObject:
   m_ObjectHideFlags: 0

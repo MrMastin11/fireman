@@ -10,7 +10,7 @@ public class WaterBlasterShooter : MonoBehaviour
 
     [Header("Shooting")]
     [SerializeField] private float shotsPerSecond = 8f;
-    [SerializeField] private float waterPerShot = 1f;
+    [SerializeField] private float waterPerShot = 2f;
     [SerializeField] private float particleSpeed = 34f;
     [SerializeField] private float maxDistance = 80f;
     [SerializeField] private int dropletsPerShot = 24;
@@ -24,6 +24,7 @@ public class WaterBlasterShooter : MonoBehaviour
     [SerializeField] private float maxDropletLifetime = 0.9f;
     [SerializeField] private float gravity = -18f;
     [SerializeField] private float bounceDamping = 0.55f;
+    [SerializeField] private float ricochetSideDeflection = 0.55f;
     [SerializeField] private int maxBounces = 2;
     [SerializeField] private float collisionRadius = 0.08f;
 
@@ -236,7 +237,17 @@ public class WaterBlasterShooter : MonoBehaviour
             {
                 droplet.transform.position = hit.point + hit.normal * (droplet.radius + 0.005f);
                 droplet.distanceTravelled += hit.distance;
-                droplet.velocity = Vector3.Reflect(droplet.velocity, hit.normal) * bounceDamping;
+                Vector3 reflectedDirection = Vector3.Reflect(droplet.velocity.normalized, hit.normal).normalized;
+                Vector3 randomTangent = Vector3.ProjectOnPlane(Random.onUnitSphere, hit.normal);
+                if (randomTangent.sqrMagnitude < 0.0001f)
+                    randomTangent = Vector3.Cross(hit.normal, Vector3.up);
+                if (randomTangent.sqrMagnitude < 0.0001f)
+                    randomTangent = Vector3.Cross(hit.normal, Vector3.right);
+
+                randomTangent.Normalize();
+                float sideDeflection = Random.Range(-ricochetSideDeflection, ricochetSideDeflection);
+                Vector3 ricochetDirection = (reflectedDirection + randomTangent * sideDeflection).normalized;
+                droplet.velocity = ricochetDirection * droplet.velocity.magnitude * bounceDamping;
                 droplet.bounces++;
 
                 if (droplet.bounces > maxBounces || droplet.velocity.sqrMagnitude < 4f)
