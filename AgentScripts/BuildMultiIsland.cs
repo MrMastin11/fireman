@@ -33,6 +33,8 @@ public static class BuildMultiIsland
         if (house == null || path == null || hydrant == null || firstTree == null || oldGround == null || fireSystem == null)
             throw new InvalidOperationException("The existing house scene is missing a required prototype object.");
 
+        RemoveTestFireObjects(house);
+
         oldGround.SetActive(false);
         path.transform.position = new Vector3(0f, -0.04f, -7.35f);
         path.transform.localScale = new Vector3(3.4f, 0.12f, 4.2f);
@@ -48,7 +50,11 @@ public static class BuildMultiIsland
         Material concrete = LoadMaterial("Assets/Materials/Concrete.mat");
         Material trim = LoadMaterial("Assets/Materials/House_Trim.mat");
         Material hydrantMetal = LoadMaterial("Assets/Materials/Hydrant_Metal.mat");
+        Material roofEdge = LoadMaterial("Assets/Materials/Roof_Edge.mat");
         Material water = GetOrCreateWaterMaterial();
+
+        CreateRoofInteriorClosure(house, roofEdge);
+        RemoveFireSpawnPoints(house);
 
         GameObject layout = new GameObject(LayoutName);
         layout.transform.SetParent(environment.transform, false);
@@ -57,21 +63,34 @@ public static class BuildMultiIsland
         CreateCube("Water_Between_Islands", layout.transform, new Vector3(0f, -0.95f, 0f),
             Vector3.zero, new Vector3(84f, 0.5f, 84f), water);
 
-        const float islandSpacing = 24f;
         const float levelRise = 1.5f;
         Vector3[] centers =
         {
             new Vector3(0f, 0f, 0f),
-            new Vector3(0f, levelRise * 1f, islandSpacing),
-            new Vector3(islandSpacing, levelRise * 2f, islandSpacing),
-            new Vector3(islandSpacing, levelRise * 3f, 0f),
-            new Vector3(islandSpacing, levelRise * 4f, -islandSpacing),
-            new Vector3(0f, levelRise * 5f, -islandSpacing),
-            new Vector3(-islandSpacing, levelRise * 6f, -islandSpacing),
-            new Vector3(-islandSpacing, levelRise * 7f, 0f),
-            new Vector3(-islandSpacing, levelRise * 8f, islandSpacing)
+            new Vector3(1.5f, levelRise * 1f, 24.5f),
+            new Vector3(26.5f, levelRise * 2f, 24f),
+            new Vector3(26f, levelRise * 3f, 1f),
+            new Vector3(25.5f, levelRise * 4f, -25f),
+            new Vector3(-1f, levelRise * 5f, -26f),
+            new Vector3(-26f, levelRise * 6f, -25f),
+            new Vector3(-25f, levelRise * 7f, 1f),
+            new Vector3(-24f, levelRise * 8f, 25f)
         };
         string[] labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+        float[] houseYaw = { 0f, 8f, -12f, 15f, -7f, 11f, -15f, 6f, -10f };
+        float[] houseScale = { 1f, 0.96f, 1.04f, 0.92f, 1.08f, 0.98f, 1.03f, 0.94f, 1.06f };
+        Vector3[] treeOffsets =
+        {
+            new Vector3(-3.5f, 0f, 7.3f),
+            new Vector3(3.5f, 0f, 7.3f),
+            new Vector3(0f, 0f, 7.8f),
+            new Vector3(-4.5f, 0f, 7f),
+            new Vector3(4.5f, 0f, 7f),
+            new Vector3(-2.5f, 0f, 7.6f),
+            new Vector3(2.5f, 0f, 7.6f),
+            new Vector3(-4f, 0f, 7.1f),
+            new Vector3(4f, 0f, 7.1f)
+        };
         var fireSpawnPoints = new List<Transform>(centers.Length);
 
         for (int i = 0; i < centers.Length; i++)
@@ -86,17 +105,24 @@ public static class BuildMultiIsland
             CreateCylinder("Grass_Top", island.transform, new Vector3(0f, -0.28f, 0f),
                 new Vector3(18f, 0.5f, 18f), grass);
 
+            GameObject houseInstance;
             if (i == 0)
             {
                 house.transform.SetParent(island.transform, true);
+                house.transform.position = centers[i];
+                house.transform.rotation = Quaternion.Euler(0f, houseYaw[i], 0f);
+                house.transform.localScale = Vector3.one * houseScale[i];
+                houseInstance = house;
             }
             else
             {
                 GameObject clone = UnityEngine.Object.Instantiate(house, island.transform);
                 clone.name = $"House_Island_{labels[i]}";
                 clone.transform.position = centers[i];
-                clone.transform.rotation = Quaternion.identity;
-                clone.transform.localScale = Vector3.one;
+                clone.transform.rotation = Quaternion.Euler(0f, houseYaw[i], 0f);
+                clone.transform.localScale = Vector3.one * houseScale[i];
+                RemoveFireSpawnPoints(clone);
+                houseInstance = clone;
 
                 GameObject clonedPath = UnityEngine.Object.Instantiate(path, island.transform);
                 clonedPath.name = $"Front_Path_Island_{labels[i]}";
@@ -112,16 +138,20 @@ public static class BuildMultiIsland
 
                 GameObject clonedTree = UnityEngine.Object.Instantiate(firstTree, island.transform);
                 clonedTree.name = $"Tree_Island_{labels[i]}";
-                clonedTree.transform.position = centers[i] + new Vector3(5.5f, 0f, 4.2f);
+                clonedTree.transform.position = centers[i] + treeOffsets[i];
                 clonedTree.transform.rotation = Quaternion.identity;
-                clonedTree.transform.localScale = Vector3.one;
+                clonedTree.transform.localScale = Vector3.one * (0.9f + (i % 3) * 0.08f);
             }
 
-            GameObject spawn = new GameObject($"FireSpawnPoint_{labels[i]}");
-            spawn.transform.SetParent(island.transform, false);
-            spawn.transform.localPosition = new Vector3(0f, 1.35f, 0f);
-            spawn.transform.localRotation = Quaternion.identity;
-            fireSpawnPoints.Add(spawn.transform);
+            int spawnCount = i + 1;
+            for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
+            {
+                GameObject spawn = new GameObject($"FireSpawnPoint_{labels[i]}_{spawnIndex + 1:00}");
+                spawn.transform.SetParent(houseInstance.transform, false);
+                spawn.transform.localPosition = GetFireSpawnLocalPosition(spawnIndex, spawnCount);
+                spawn.transform.localRotation = Quaternion.identity;
+                fireSpawnPoints.Add(spawn.transform);
+            }
         }
 
         for (int i = 0; i < centers.Length - 1; i++)
@@ -139,6 +169,7 @@ public static class BuildMultiIsland
         fireSerialized.FindProperty("spawnAllHouseFiresAtStart").boolValue = true;
         fireSerialized.FindProperty("houseSpreadBounds").vector3Value = new Vector3(5.1f, 2.6f, 4.1f);
         fireSerialized.FindProperty("spreadInterval").floatValue = 0.5f;
+        fireSerialized.FindProperty("maxFires").intValue = 72;
         fireSerialized.ApplyModifiedPropertiesWithoutUndo();
 
         EditorUtility.SetDirty(environment);
@@ -180,9 +211,62 @@ public static class BuildMultiIsland
             .Where(t => t.name == "Tree")
             .ToArray();
         if (trees.Length > 0)
-            trees[0].position = new Vector3(-5.5f, 0f, 4.2f);
+            trees[0].position = new Vector3(-3.5f, 0f, 7.3f);
         if (trees.Length > 1)
-            trees[1].position = new Vector3(5.5f, 0f, 4.2f);
+            trees[1].position = new Vector3(3.5f, 0f, 7.3f);
+    }
+
+    private static void RemoveTestFireObjects(GameObject house)
+    {
+        var testObjects = house.GetComponentsInChildren<Transform>(true)
+            .Where(t => t.name == "Fire_Test_Point")
+            .Select(t => t.gameObject)
+            .ToArray();
+        foreach (GameObject testObject in testObjects)
+            UnityEngine.Object.DestroyImmediate(testObject);
+    }
+
+    private static void RemoveFireSpawnPoints(GameObject house)
+    {
+        var spawnObjects = house.GetComponentsInChildren<Transform>(true)
+            .Where(t => t.name.StartsWith("FireSpawnPoint_", StringComparison.Ordinal))
+            .Select(t => t.gameObject)
+            .ToArray();
+        foreach (GameObject spawnObject in spawnObjects)
+            UnityEngine.Object.DestroyImmediate(spawnObject);
+    }
+
+    private static Vector3 GetFireSpawnLocalPosition(int index, int count)
+    {
+        if (count == 1)
+            return new Vector3(0f, 1.35f, 0f);
+
+        int columns = Mathf.CeilToInt(Mathf.Sqrt(count));
+        int rows = Mathf.CeilToInt(count / (float)columns);
+        int column = index % columns;
+        int row = index / columns;
+        const float spacing = 1.55f;
+        float x = (column - (columns - 1) * 0.5f) * spacing;
+        float z = (row - (rows - 1) * 0.5f) * spacing;
+        return new Vector3(x, 1.35f, z);
+    }
+
+    private static void CreateRoofInteriorClosure(GameObject house, Material material)
+    {
+        var oldPanels = house.GetComponentsInChildren<Transform>(true)
+            .Where(t => t.name == "Roof_Interior_Closure_Left" || t.name == "Roof_Interior_Closure_Right")
+            .Select(t => t.gameObject)
+            .ToArray();
+        foreach (GameObject oldPanel in oldPanels)
+            UnityEngine.Object.DestroyImmediate(oldPanel);
+
+        const float slopeAngle = 16.37f;
+        CreateCube("Roof_Interior_Closure_Left", house.transform,
+            new Vector3(-2.725f, 6.77f, 0f), new Vector3(0f, 0f, slopeAngle),
+            new Vector3(5.86f, 0.22f, 9.05f), material);
+        CreateCube("Roof_Interior_Closure_Right", house.transform,
+            new Vector3(2.725f, 6.77f, 0f), new Vector3(0f, 0f, 360f - slopeAngle),
+            new Vector3(5.86f, 0.22f, 9.05f), material);
     }
 
     private static void CreateLadder(Transform parent, string name, Vector3 firstCenter, Vector3 secondCenter,
