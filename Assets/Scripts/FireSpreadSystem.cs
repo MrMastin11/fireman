@@ -5,16 +5,15 @@ public class FireSpreadSystem : MonoBehaviour
 {
     private static readonly List<FireSpreadSystem> instances = new List<FireSpreadSystem>();
 
-    [Header("Spawn Area")]
-    [SerializeField] private Vector3 spawnAreaCenter = new Vector3(0f, 2.7f, -0.9f);
-    [SerializeField] private Vector3 spawnAreaSize = new Vector3(11f, 5f, 9f);
-    [SerializeField] private bool firstSpawnImmediately = true;
-    [SerializeField] private float spawnInterval = 2f;
+    [Header("House Fire Starts")]
+    [SerializeField] private Transform[] fireSpawnPoints = new Transform[0];
+    [SerializeField] private bool spawnAllHouseFiresAtStart = true;
+    [SerializeField] private Vector3 houseSpreadBounds = new Vector3(5.1f, 2.6f, 4.1f);
     [SerializeField] private LayerMask spawnObstacleMask = ~0;
     [SerializeField] private float spawnClearanceRadius = 0.35f;
 
     [Header("Fire Spread")]
-    [SerializeField] private float spreadInterval = 1f;
+    [SerializeField] private float spreadInterval = 0.5f;
     [SerializeField] private float spreadRadius = 2f;
     [SerializeField] private float minFireSeparation = 0.65f;
     [SerializeField] private int maxFires = 24;
@@ -27,18 +26,22 @@ public class FireSpreadSystem : MonoBehaviour
 
     private FireNode[] firePool;
     private Material fireMaterial;
-    private float nextSpawnTime;
     private int poolCursor;
     private int activeFireCount;
+    private bool initialFiresSpawned;
 
     private sealed class FireNode
     {
         public GameObject gameObject;
         public Transform transform;
         public ParticleSystem particles;
+        public Transform houseAnchor;
         public float nextSpreadTime;
         public bool active;
     }
+
+    public int ActiveFireCount => activeFireCount;
+    public int ConfiguredSpawnPointCount => fireSpawnPoints == null ? 0 : fireSpawnPoints.Length;
 
     private void OnEnable()
     {
@@ -59,16 +62,14 @@ public class FireSpreadSystem : MonoBehaviour
 
     private void Start()
     {
-        nextSpawnTime = firstSpawnImmediately ? Time.time : Time.time + spawnInterval;
+        if (spawnAllHouseFiresAtStart)
+            SpawnInitialHouseFires();
     }
 
     private void Update()
     {
-        if (Time.time >= nextSpawnTime)
-        {
-            TrySpawnRandomFire();
-            nextSpawnTime = Time.time + spawnInterval;
-        }
+        if (!initialFiresSpawned)
+            SpawnInitialHouseFires();
 
         for (int i = 0; i < firePool.Length; i++)
         {
@@ -172,15 +173,17 @@ public class FireSpreadSystem : MonoBehaviour
         return gradient;
     }
 
-    private void TrySpawnRandomFire()
+    private void SpawnInitialHouseFires()
     {
-        for (int attempt = 0; attempt < 12; attempt++)
+        initialFiresSpawned = true;
+        if (fireSpawnPoints == null)
+            return;
+
+        for (int i = 0; i < fireSpawnPoints.Length; i++)
         {
-            Vector3 point = GetRandomPointInSpawnArea();
-            if (IsSpawnPointClear(point)
-                && !IsFireNear(point, minFireSeparation)
-                && SpawnFire(point))
-                return;
+            Transform spawnPoint = fireSpawnPoints[i];
+            if (spawnPoint != null)
+                SpawnFire(spawnPoint.position, spawnPoint);
         }
     }
 
@@ -192,22 +195,30 @@ public class FireSpreadSystem : MonoBehaviour
         for (int attempt = 0; attempt < 8; attempt++)
         {
             Vector3 point = source.transform.position + Random.insideUnitSphere * spreadRadius;
-            point = ClampToSpawnArea(point);
+            if (source.houseAnchor != null)
+            {
+                Vector3 localOffset = point - source.houseAnchor.position;
+                localOffset.x = Mathf.Clamp(localOffset.x, -houseSpreadBounds.x, houseSpreadBounds.x);
+                localOffset.y = Mathf.Clamp(localOffset.y, -houseSpreadBounds.y, houseSpreadBounds.y);
+                localOffset.z = Mathf.Clamp(localOffset.z, -houseSpreadBounds.z, houseSpreadBounds.z);
+                point = source.houseAnchor.position + localOffset;
+            }
 
             if (IsSpawnPointClear(point)
                 && !IsFireNear(point, minFireSeparation)
-                && SpawnFire(point))
+                && SpawnFire(point, source.houseAnchor))
                 return;
         }
     }
 
-    private bool SpawnFire(Vector3 position)
+    private bool SpawnFire(Vector3 position, Transform houseAnchor)
     {
         FireNode fire = GetAvailableFire();
         if (fire == null)
             return false;
 
         fire.transform.position = position;
+        fire.houseAnchor = houseAnchor;
         fire.nextSpreadTime = Time.time + spreadInterval;
         fire.active = true;
         fire.gameObject.SetActive(true);
@@ -272,6 +283,7 @@ public class FireSpreadSystem : MonoBehaviour
     private void ReleaseFire(FireNode fire)
     {
         fire.active = false;
+        fire.houseAnchor = null;
         fire.particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         fire.gameObject.SetActive(false);
         activeFireCount = Mathf.Max(0, activeFireCount - 1);
@@ -297,24 +309,6 @@ public class FireSpreadSystem : MonoBehaviour
             spawnClearanceRadius,
             spawnObstacleMask,
             QueryTriggerInteraction.Ignore);
-    }
-
-    private Vector3 GetRandomPointInSpawnArea()
-    {
-        Vector3 halfSize = spawnAreaSize * 0.5f;
-        return spawnAreaCenter + new Vector3(
-            Random.Range(-halfSize.x, halfSize.x),
-            Random.Range(-halfSize.y, halfSize.y),
-            Random.Range(-halfSize.z, halfSize.z));
-    }
-
-    private Vector3 ClampToSpawnArea(Vector3 point)
-    {
-        Vector3 halfSize = spawnAreaSize * 0.5f;
-        point.x = Mathf.Clamp(point.x, spawnAreaCenter.x - halfSize.x, spawnAreaCenter.x + halfSize.x);
-        point.y = Mathf.Clamp(point.y, spawnAreaCenter.y - halfSize.y, spawnAreaCenter.y + halfSize.y);
-        point.z = Mathf.Clamp(point.z, spawnAreaCenter.z - halfSize.z, spawnAreaCenter.z + halfSize.z);
-        return point;
     }
 
     private Material CreateFireMaterial()
