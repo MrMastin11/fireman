@@ -63,17 +63,24 @@ public static class BuildMultiIsland
             Vector3.zero, new Vector3(84f, 0.5f, 84f), water);
 
         const float levelRise = 1.5f;
+        float[] levelHeights = new float[9];
+        for (int i = 1; i < levelHeights.Length; i++)
+        {
+            float rise = GetHouseVariant(i) == 3 ? 6.5f : levelRise;
+            levelHeights[i] = levelHeights[i - 1] + rise;
+        }
+
         Vector3[] centers =
         {
-            new Vector3(0f, 0f, 0f),
-            new Vector3(1.5f, levelRise * 1f, 24.5f),
-            new Vector3(26.5f, levelRise * 2f, 24f),
-            new Vector3(26f, levelRise * 3f, 1f),
-            new Vector3(25.5f, levelRise * 4f, -25f),
-            new Vector3(-1f, levelRise * 5f, -26f),
-            new Vector3(-26f, levelRise * 6f, -25f),
-            new Vector3(-25f, levelRise * 7f, 1f),
-            new Vector3(-24f, levelRise * 8f, 25f)
+            new Vector3(0f, levelHeights[0], 0f),
+            new Vector3(1.5f, levelHeights[1], 24.5f),
+            new Vector3(26.5f, levelHeights[2], 24f),
+            new Vector3(26f, levelHeights[3], 1f),
+            new Vector3(25.5f, levelHeights[4], -25f),
+            new Vector3(-1f, levelHeights[5], -26f),
+            new Vector3(-26f, levelHeights[6], -25f),
+            new Vector3(-25f, levelHeights[7], 1f),
+            new Vector3(-24f, levelHeights[8], 25f)
         };
         string[] labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
         float[] houseScale = { 1f, 0.96f, 1.04f, 0.92f, 1.08f, 0.98f, 1.03f, 0.94f, 1.06f };
@@ -183,13 +190,15 @@ public static class BuildMultiIsland
 
         for (int i = 0; i < centers.Length - 1; i++)
         {
-            CreateLadder(layout.transform, $"FireLadder_{labels[i]}_{labels[i + 1]}",
-                centers[i], centers[i + 1], trim, hydrantMetal);
-
             if (GetHouseVariant(i + 1) == 3)
             {
                 CreateUpperLadder(layout.transform, $"FireLadder_Upper_{labels[i]}_{labels[i + 1]}",
                     centers[i], centers[i + 1], houseRotations[i], trim, hydrantMetal);
+            }
+            else
+            {
+                CreateLadder(layout.transform, $"FireLadder_{labels[i]}_{labels[i + 1]}",
+                    centers[i], centers[i + 1], trim, hydrantMetal);
             }
         }
 
@@ -771,28 +780,9 @@ public static class BuildMultiIsland
         Vector3 balconyDirection = Mathf.Abs(localDirection.x) > Mathf.Abs(localDirection.z)
             ? (localDirection.x >= 0f ? Vector3.right : Vector3.left)
             : (localDirection.z >= 0f ? Vector3.forward : Vector3.back);
-        const float landingHeight = 7.25f;
         Vector3 start = firstCenter + houseRotation * (balconyDirection * 6.20f + Vector3.up * 5.98f);
-        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * landingHeight;
+        Vector3 end = secondCenter - horizontalDirection * 9.05f + Vector3.up * 0.04f;
         CreateLadderBetweenPoints(parent, name, start, end, railMaterial, stepMaterial, 2.3f);
-        CreateUpperLanding(parent, $"{name}_Landing", secondCenter, horizontalDirection,
-            landingHeight, railMaterial, stepMaterial);
-    }
-
-    private static void CreateUpperLanding(Transform parent, string name, Vector3 islandCenter,
-        Vector3 directionToIsland, float height, Material railMaterial, Material stepMaterial)
-    {
-        Vector3 center = islandCenter - directionToIsland * 8.65f + Vector3.up * (height - 0.10f);
-        Vector3 side = Vector3.Cross(Vector3.up, directionToIsland).normalized;
-        GameObject group = new GameObject(name);
-        group.transform.SetParent(parent, false);
-
-        CreateCube("Deck", group.transform, center, Vector3.zero,
-            new Vector3(2.3f, 0.18f, 2.0f), stepMaterial);
-        CreateCube("Rail_Left", group.transform, center + Vector3.up * 0.58f + side * 0.95f,
-            Vector3.zero, new Vector3(0.14f, 1.20f, 2.0f), railMaterial);
-        CreateCube("Rail_Right", group.transform, center + Vector3.up * 0.58f - side * 0.95f,
-            Vector3.zero, new Vector3(0.14f, 1.20f, 2.0f), railMaterial);
     }
 
     private static void CreateLadderBetweenPoints(Transform parent, string name, Vector3 start, Vector3 end,
