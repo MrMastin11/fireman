@@ -9,7 +9,7 @@ public class FirefighterVitals : MonoBehaviour
 
     [Header("Water Tank")]
     [SerializeField] private float maxWater = 100f;
-    [SerializeField] private float waterRechargePerSecond = 8f;
+    [SerializeField] private float waterRechargePerSecond = 10f;
 
     private CharacterController characterController;
     private float currentHealth;

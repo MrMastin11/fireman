@@ -49084,7 +49084,7 @@ MonoBehaviour:
   playerController: {fileID: 1037116478}
   playerVitals: {fileID: 1037116482}
   shotsPerSecond: 8
-  waterPerShot: 3
+  waterPerShot: 2
   particleSpeed: 34
   maxDistance: 80
   dropletsPerShot: 24
@@ -49119,7 +49119,7 @@ MonoBehaviour:
   maxHealth: 100
   fireDamagePerSecond: 10
   maxWater: 100
-  waterRechargePerSecond: 8
+  waterRechargePerSecond: 10
 --- !u!1 &1037991927
 GameObject:
   m_ObjectHideFlags: 0

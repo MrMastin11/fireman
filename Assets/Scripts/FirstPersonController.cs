@@ -97,7 +97,7 @@ public class FirstPersonController : MonoBehaviour
         if (wasGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
 
-        if (wasGrounded && Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (wasGrounded && Keyboard.current.spaceKey.isPressed)
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
 
         verticalVelocity += gravity * Time.deltaTime;
