@@ -3831,49 +3831,13 @@ MonoBehaviour:
   fireSpawnPoints:
   - {fileID: 81860836}
   - {fileID: 457611238}
-  - {fileID: 186550244}
   - {fileID: 2141391947}
-  - {fileID: 1218110555}
-  - {fileID: 495040829}
   - {fileID: 2057424145}
-  - {fileID: 460693373}
-  - {fileID: 818716743}
-  - {fileID: 1336220741}
   - {fileID: 1997722855}
-  - {fileID: 2093677337}
-  - {fileID: 1002998742}
-  - {fileID: 545460634}
-  - {fileID: 1976550277}
   - {fileID: 1272025751}
-  - {fileID: 1025822339}
-  - {fileID: 1744195042}
-  - {fileID: 434432129}
-  - {fileID: 1455692009}
-  - {fileID: 2083837851}
   - {fileID: 503079432}
-  - {fileID: 2114334006}
-  - {fileID: 1158544127}
-  - {fileID: 1117026238}
-  - {fileID: 1737523500}
-  - {fileID: 1561118598}
-  - {fileID: 902187787}
   - {fileID: 1681404720}
-  - {fileID: 1350388581}
-  - {fileID: 2116210720}
-  - {fileID: 1899238266}
-  - {fileID: 1839938376}
-  - {fileID: 2010854747}
-  - {fileID: 1153000453}
-  - {fileID: 779505326}
   - {fileID: 1245321757}
-  - {fileID: 802390082}
-  - {fileID: 2108875502}
-  - {fileID: 1195666820}
-  - {fileID: 1745990581}
-  - {fileID: 2042982101}
-  - {fileID: 257336142}
-  - {fileID: 1026709773}
-  - {fileID: 1849687904}
   finalHouse: {fileID: 766212571}
   spawnAllHouseFiresAtStart: 1
   houseSpreadBounds: {x: 5.1, y: 2.6, z: 4.1}
@@ -3884,7 +3848,7 @@ MonoBehaviour:
   spreadInterval: 0.5
   spreadRadius: 2
   minFireSeparation: 0.65
-  maxFires: 72
+  maxFires: 36
   extinguishRadius: 0.5
   contactRadius: 0.45
   particlesPerFire: 36

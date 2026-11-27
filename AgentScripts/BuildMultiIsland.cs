@@ -176,7 +176,10 @@ public static class BuildMultiIsland
             if (i == centers.Length - 1)
                 finalHouseInstance = houseInstance;
 
-            int spawnCount = i + 1;
+            // Keep the route readable: every house starts with one fire.
+            // The difficulty still comes from the faster spread, not from an
+            // impossible pile of initial fires in the final house.
+            int spawnCount = 1;
             bool twoStoryHouse = GetHouseVariant(i + 1) == 3;
             for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
             {
@@ -215,7 +218,7 @@ public static class BuildMultiIsland
         fireSerialized.FindProperty("spawnAllHouseFiresAtStart").boolValue = true;
         fireSerialized.FindProperty("houseSpreadBounds").vector3Value = new Vector3(5.1f, 2.6f, 4.1f);
         fireSerialized.FindProperty("spreadInterval").floatValue = 0.5f;
-        fireSerialized.FindProperty("maxFires").intValue = 72;
+        fireSerialized.FindProperty("maxFires").intValue = 36;
         fireSerialized.ApplyModifiedPropertiesWithoutUndo();
 
         EditorUtility.SetDirty(environment);
