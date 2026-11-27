@@ -176,11 +176,8 @@ public static class BuildMultiIsland
             if (i == centers.Length - 1)
                 finalHouseInstance = houseInstance;
 
-            // Keep the route readable: every house starts with one fire.
-            // The difficulty still comes from the faster spread, not from an
-            // impossible pile of initial fires in the final house.
-            int spawnCount = 1;
             bool twoStoryHouse = GetHouseVariant(i + 1) == 3;
+            int spawnCount = twoStoryHouse ? 2 : 1;
             for (int spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++)
             {
                 GameObject spawn = new GameObject($"FireSpawnPoint_{labels[i]}_{spawnIndex + 1:00}");
@@ -721,6 +718,9 @@ public static class BuildMultiIsland
 
     private static Vector3 GetFireSpawnLocalPosition(int index, int count, bool twoStoryHouse)
     {
+        if (twoStoryHouse && count == 2)
+            return index == 0 ? new Vector3(0f, 1.35f, 0f) : new Vector3(0f, 7.10f, 0f);
+
         if (count == 1)
             return new Vector3(0f, 1.35f, 0f);
 

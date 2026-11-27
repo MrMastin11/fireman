@@ -303,10 +303,43 @@ public class FireSpreadSystem : MonoBehaviour
             }
 
             if (IsSpawnPointClear(point)
+                && HasFirePath(source.transform.position, point, source.houseAnchor)
                 && !IsFireNear(point, minFireSeparation)
                 && SpawnFire(point, source.houseAnchor, false))
                 return;
         }
+    }
+
+    private bool HasFirePath(Vector3 source, Vector3 target, Transform house)
+    {
+        if (!Physics.Linecast(source, target, spawnObstacleMask, QueryTriggerInteraction.Ignore))
+            return true;
+
+        // A two-story fire may cross floors only through the interior staircase
+        // or the open balcony route. A wall or closed room still blocks it.
+        if (!IsTwoStoryHouse(house) || Mathf.Abs(source.y - target.y) < 2f)
+            return false;
+
+        return IsNearFloorAccess(house, source) || IsNearFloorAccess(house, target);
+    }
+
+    private static bool IsNearFloorAccess(Transform house, Vector3 point)
+    {
+        const float accessRadius = 2.8f;
+        float accessRadiusSqr = accessRadius * accessRadius;
+        Transform[] children = house.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < children.Length; i++)
+        {
+            string name = children[i].name;
+            bool isStair = name.StartsWith("Interior_Stair_", System.StringComparison.Ordinal);
+            bool isBalcony = name == "SecondFloor_Balcony";
+            if ((isStair || isBalcony)
+                && (children[i].position - point).sqrMagnitude <= accessRadiusSqr)
+                return true;
+        }
+
+        return false;
     }
 
     private static bool IsTwoStoryHouse(Transform house)
